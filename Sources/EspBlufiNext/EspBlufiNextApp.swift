@@ -309,6 +309,9 @@ private struct SessionView: View {
                     if let rssi = status.stationRSSI {
                         LabeledContent("RSSI", value: "\(rssi) dBm")
                     }
+                    if let retryCount = status.stationMaximumRetry {
+                        LabeledContent("Maximum Retries", value: String(retryCount))
+                    }
                     if let reason = status.failureReason {
                         LabeledContent("Failure Reason", value: String(reason))
                     }
