@@ -7,8 +7,10 @@ struct EspBlufiNextApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .frame(minWidth: 320, minHeight: 460)
                 .environment(scanner)
         }
+        .windowResizability(.contentMinSize)
     }
 }
 
@@ -29,6 +31,7 @@ private struct RootView: View {
                 .tabItem { Label("Logs", systemImage: "text.alignleft") }
                 .tag(Tab.logs)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -74,6 +77,7 @@ private struct DeviceListView: View {
                     .buttonStyle(.glassProminent)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
