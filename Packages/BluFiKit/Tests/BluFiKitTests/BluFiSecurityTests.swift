@@ -121,6 +121,40 @@ final class BluFiSecurityTests: XCTestCase {
         XCTAssertEqual(encryptedCustomData.count, 7)
     }
 
+    func testV1SecurityNegotiationFragmentsPGKAcrossTwentyBytePackets() async throws {
+        let transport = BluFiFakeTransport()
+        let client = try await BluFiClient(transport: transport, packetLength: 20, commandTimeout: .seconds(2))
+        let negotiationTask = Task {
+            try await client.negotiateSecurity(
+                deviceVersion: BluFiDeviceVersion(major: 1, minor: 3),
+                override: .v1
+            )
+        }
+
+        let devicePublicKey = BluFiFrame(
+            type: BluFiProtocol.typeValue(package: .data, subtype: .negotiateSecurity),
+            control: [.inputDirection],
+            sequence: 0,
+            data: [8]
+        )
+        await transport.receive(try BluFiFrameCodec.encode(devicePublicKey))
+        let negotiatedVersion = try await negotiationTask.value
+        XCTAssertEqual(negotiatedVersion, .v1)
+
+        let writes = await transport.writtenPackets()
+        XCTAssertEqual(writes.count, 21)
+        XCTAssertEqual(writes[0], [0x01, 0x00, 0x00, 0x03, 0x00, 0x01, 0x07])
+
+        let PGKFragments = Array(writes[1 ... 18])
+        XCTAssertTrue(PGKFragments.allSatisfy { $0[1] == BluFiFrameControl.fragmented.rawValue })
+        XCTAssertEqual(PGKFragments.map { $0[2] }, [UInt8](1 ... 18))
+        XCTAssertTrue(PGKFragments.allSatisfy { $0.count == 20 && $0[3] == 16 })
+        XCTAssertEqual(Array(PGKFragments[0][4 ... 6]), [0x08, 0x01, 0x01])
+
+        XCTAssertEqual(Array(writes[19].prefix(4)), [0x01, 0x00, 0x13, 0x0C])
+        XCTAssertEqual(Array(writes[20].prefix(5)), [0x04, 0x02, 0x14, 0x01, 0x03])
+    }
+
     private func hexadecimal(_ value: String) -> [UInt8] {
         stride(from: 0, to: value.count, by: 2).map { offset in
             let start = value.index(value.startIndex, offsetBy: offset)
