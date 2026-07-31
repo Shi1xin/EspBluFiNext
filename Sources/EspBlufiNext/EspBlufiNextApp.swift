@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 @main
 struct EspBlufiNextApp: App {
@@ -88,21 +89,29 @@ private struct DeviceListView: View {
             }
             .accessibilityIdentifier("empty-device-state")
         } else {
-            List {
-                Section("Nearby Devices") {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 12) {
+                    Text("Nearby Devices")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
                     ForEach(scanner.devices) { device in
                         DeviceRow(device: device)
                     }
-                }
+
+                    Divider()
+                        .padding(.vertical, 4)
 
                 if scanner.isScanning {
-                    Section {
                         Label("Scanning for BluFi devices", systemImage: "dot.radiowaves.left.and.right")
+                            .font(.subheadline)
                             .foregroundStyle(.secondary)
-                    }
                 }
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 16)
             }
-            .listStyle(.insetGrouped)
         }
     }
 }
@@ -130,18 +139,22 @@ private struct DeviceRow: View {
     let device: BluFiDiscoveredDevice
 
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(alignment: .top, spacing: 14) {
             Image(systemName: "dot.radiowaves.left.and.right")
                 .font(.title3)
                 .foregroundStyle(.tint)
+                .frame(width: 30, height: 30)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(device.name)
                     .font(.headline)
+                    .lineLimit(2)
+                    .layoutPriority(1)
                 Text(device.id.uuidString.lowercased())
                     .font(.caption2.monospaced())
                     .foregroundStyle(.secondary)
                     .textSelection(.enabled)
+                    .lineLimit(2)
             }
 
             Spacer(minLength: 8)
@@ -149,8 +162,18 @@ private struct DeviceRow: View {
             Text("\(device.rssi) dBm")
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(.secondary)
+                .padding(.top, 4)
         }
-        .padding(.vertical, 4)
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            Color(uiColor: .secondarySystemGroupedBackground),
+            in: RoundedRectangle(cornerRadius: 20, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .strokeBorder(.white.opacity(0.08), lineWidth: 1)
+        }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("device-\(device.id.uuidString)")
     }
