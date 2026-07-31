@@ -27,7 +27,7 @@ targets:
       path: Sources/EspBlufiNext/Info.plist
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.cyberbacchus.EspBlufiNext
+        PRODUCT_BUNDLE_IDENTIFIER: com.espblufi.next
         SWIFT_VERSION: "6.0"
         TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_MACCATALYST: false
@@ -45,7 +45,7 @@ targets:
       - path: Tests/EspBlufiNextTests
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.cyberbacchus.EspBlufiNextTests
+        PRODUCT_BUNDLE_IDENTIFIER: com.espblufi.next.tests
         SWIFT_VERSION: "6.0"
     dependencies:
       - target: EspBlufiNext
