@@ -105,11 +105,9 @@ private struct DeviceListView: View {
 
                     ForEach(scanner.devices) { device in
                         Button {
+                            showSession()
                             Task {
                                 await session.connect(to: device, using: scanner)
-                                if session.isConnected {
-                                    showSession()
-                                }
                             }
                         } label: {
                             DeviceRow(device: device)
@@ -214,6 +212,18 @@ private struct SessionView: View {
             Group {
                 if session.isConnected, let device = session.connectedDevice {
                     sessionContent(for: device)
+                } else if session.phase.isBusy {
+                    ContentUnavailableView(
+                        "Connecting to Device",
+                        systemImage: "antenna.radiowaves.left.and.right",
+                        description: Text("Discovering the BluFi service and requesting the device version.")
+                    )
+                } else if let lastError = session.lastError {
+                    ContentUnavailableView(
+                        "Connection Failed",
+                        systemImage: "exclamationmark.triangle",
+                        description: Text(lastError)
+                    )
                 } else {
                     ContentUnavailableView(
                         "No Active Session",
