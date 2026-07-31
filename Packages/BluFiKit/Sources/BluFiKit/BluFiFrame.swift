@@ -33,6 +33,8 @@ public enum BluFiProtocolError: Error, Sendable, Equatable, LocalizedError {
     case malformedFragment
     case fragmentLengthMismatch(expected: Int, actual: Int)
     case invalidPayload(description: String)
+    case securityRequired
+    case cryptographicFailure(status: Int32)
     case unexpectedFrame(type: UInt8)
     case acknowledgementTimeout(sequence: UInt8)
     case responseTimeout(type: UInt8)
@@ -60,6 +62,10 @@ public enum BluFiProtocolError: Error, Sendable, Equatable, LocalizedError {
             "BluFi reassembled \(actual) bytes; fragment declares \(expected)."
         case let .invalidPayload(description):
             description
+        case .securityRequired:
+            "BluFi frame encryption was requested before security negotiation completed."
+        case let .cryptographicFailure(status):
+            "Apple cryptographic operation failed with status \(status)."
         case let .unexpectedFrame(type):
             "Received unexpected BluFi frame type \(String(format: "0x%02X", type))."
         case let .acknowledgementTimeout(sequence):
@@ -94,13 +100,15 @@ public enum BluFiCRC16 {
 }
 
 public enum BluFiFrameCodec {
-    public static func encode(_ frame: BluFiFrame) throws -> [UInt8] {
+    public static func encode(
+        _ frame: BluFiFrame,
+        encrypting: (([UInt8], UInt8) throws -> [UInt8])? = nil
+    ) throws -> [UInt8] {
         guard frame.data.count <= Int(UInt8.max) else {
             throw BluFiProtocolError.dataLengthOutOfRange(frame.data.count)
         }
 
         var packet = [frame.type, frame.control.rawValue, frame.sequence, UInt8(frame.data.count)]
-        packet.append(contentsOf: frame.data)
 
         if frame.control.contains(.checksum) {
             let checksum = BluFiCRC16.calculate([frame.sequence, UInt8(frame.data.count)] + frame.data)
@@ -108,10 +116,24 @@ public enum BluFiFrameCodec {
             packet.append(UInt8(truncatingIfNeeded: checksum >> 8))
         }
 
+        let encryptedData: [UInt8]
+        if frame.control.contains(.encrypted), !frame.data.isEmpty {
+            guard let encrypting else {
+                throw BluFiProtocolError.securityRequired
+            }
+            encryptedData = try encrypting(frame.data, frame.sequence)
+        } else {
+            encryptedData = frame.data
+        }
+        packet.insert(contentsOf: encryptedData, at: BluFiProtocol.frameHeaderLength)
+
         return packet
     }
 
-    public static func decode(_ packet: [UInt8]) throws -> BluFiFrame {
+    public static func decode(
+        _ packet: [UInt8],
+        decrypting: (([UInt8], UInt8) throws -> [UInt8])? = nil
+    ) throws -> BluFiFrame {
         guard packet.count >= BluFiProtocol.frameHeaderLength else {
             throw BluFiProtocolError.packetTooShort(packet.count)
         }
@@ -125,7 +147,16 @@ public enum BluFiFrameCodec {
             throw BluFiProtocolError.packetLengthMismatch(expected: expectedLength, actual: packet.count)
         }
 
-        let data = Array(packet[4 ..< 4 + dataLength])
+        let encryptedData = Array(packet[4 ..< 4 + dataLength])
+        let data: [UInt8]
+        if control.contains(.encrypted), !encryptedData.isEmpty {
+            guard let decrypting else {
+                throw BluFiProtocolError.securityRequired
+            }
+            data = try decrypting(encryptedData, packet[2])
+        } else {
+            data = encryptedData
+        }
         if control.contains(.checksum) {
             guard packet.count >= 6 else {
                 throw BluFiProtocolError.checksumMissing

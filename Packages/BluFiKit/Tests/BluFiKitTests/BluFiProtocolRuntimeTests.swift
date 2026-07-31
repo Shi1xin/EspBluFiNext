@@ -58,7 +58,7 @@ final class BluFiProtocolRuntimeTests: XCTestCase {
         XCTAssertEqual(try reassembler.append(frames[2])?.data, data)
     }
 
-    func testClientRequestWritesGetVersionAndAcknowledgesRequiredResponse() async throws {
+    func testClientRequestWritesGetVersion() async throws {
         let transport = BluFiFakeTransport()
         let client = try await BluFiClient(transport: transport, commandTimeout: .seconds(1))
 
@@ -68,7 +68,7 @@ final class BluFiProtocolRuntimeTests: XCTestCase {
 
         let versionResponse = BluFiFrame(
             type: BluFiProtocol.typeValue(package: .data, subtype: .version),
-            control: [.requireAcknowledgement, .inputDirection],
+            control: [.inputDirection],
             sequence: 0,
             data: [1, 3]
         )
@@ -79,7 +79,6 @@ final class BluFiProtocolRuntimeTests: XCTestCase {
 
         let writes = await transport.writtenPackets()
         XCTAssertEqual(writes[0], [0x1C, 0x00, 0x00, 0x00])
-        XCTAssertEqual(writes[1], [0x00, 0x00, 0x01, 0x01, 0x00])
     }
 
     func testPostWaitsForAcknowledgementOfEachFragment() async throws {

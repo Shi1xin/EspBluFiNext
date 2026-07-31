@@ -37,6 +37,7 @@ public actor BluFiSession {
     private var expectedReadSequence: UInt8 = 0
     private var reassembler = BluFiFragmentReassembler()
     private var deferredFrames: [BluFiFrame] = []
+    private var security: BluFiSecurityContext?
 
     public init(
         transport: any BluetoothTransport,
@@ -70,7 +71,14 @@ public actor BluFiSession {
         nextSendSequence = sequence
 
         for frame in frames {
-            try await transport.write(BluFiFrameCodec.encode(frame))
+            let activeSecurity = security
+            let packet = try BluFiFrameCodec.encode(frame) { data, sequence in
+                guard let activeSecurity else {
+                    throw BluFiProtocolError.securityRequired
+                }
+                return try activeSecurity.encrypt(data, sequence: sequence)
+            }
+            try await transport.write(packet)
             if options.requiresAcknowledgement {
                 try await waitForAcknowledgement(of: frame.sequence)
             }
@@ -91,7 +99,47 @@ public actor BluFiSession {
     }
 
     public func close() async {
+        security = nil
         await transport.disconnect()
+    }
+
+    public func defaultCommandOptions(requiresAcknowledgement: Bool = false) -> BluFiPostOptions {
+        guard security != nil else {
+            return BluFiPostOptions(requiresAcknowledgement: requiresAcknowledgement)
+        }
+        return BluFiPostOptions(
+            encrypted: true,
+            checksum: true,
+            requiresAcknowledgement: requiresAcknowledgement
+        )
+    }
+
+    @discardableResult
+    public func negotiateSecurity(
+        deviceVersion: BluFiDeviceVersion,
+        override: BluFiSecurityOverride = .automatic,
+        requiresAcknowledgement: Bool = false
+    ) async throws -> BluFiProtocol.SecurityVersion {
+        security = nil
+        let version = override.resolve(deviceVersion: deviceVersion)
+        let negotiator = try BluFiSecurityNegotiator(version: version)
+        let negotiationType = BluFiProtocol.typeValue(package: .data, subtype: .negotiateSecurity)
+        let options = BluFiPostOptions(requiresAcknowledgement: requiresAcknowledgement)
+
+        try await post(type: negotiationType, data: negotiator.totalLengthPayload, options: options)
+        try await post(type: negotiationType, data: negotiator.parameterPayload, options: options)
+        let response = try await Self.withTimeout(commandTimeout, error: .responseTimeout(type: negotiationType)) { [self] in
+            try await receiveFrame(matchingType: negotiationType)
+        }
+        let context = try negotiator.makeSecurityContext(devicePublicKey: response.data)
+
+        try await post(
+            type: BluFiProtocol.typeValue(package: .control, subtype: .setSecurityMode),
+            data: [0b0000_0011],
+            options: BluFiPostOptions(checksum: true, requiresAcknowledgement: requiresAcknowledgement)
+        )
+        security = context
+        return version
     }
 
     private func waitForAcknowledgement(of sequence: UInt8) async throws {
@@ -136,34 +184,22 @@ public actor BluFiSession {
                 throw BluFiProtocolError.transportClosed
             }
 
-            let frame = try BluFiFrameCodec.decode(packet)
+            let activeSecurity = security
+            let frame = try BluFiFrameCodec.decode(packet) { data, sequence in
+                guard let activeSecurity else {
+                    throw BluFiProtocolError.securityRequired
+                }
+                return try activeSecurity.decrypt(data, sequence: sequence)
+            }
             guard frame.sequence == expectedReadSequence else {
                 throw BluFiProtocolError.unexpectedSequence(expected: expectedReadSequence, actual: frame.sequence)
             }
             expectedReadSequence &+= 1
 
-            if frame.control.contains(.requireAcknowledgement) {
-                try await sendAcknowledgement(for: frame.sequence)
-            }
             if let reassembled = try reassembler.append(frame) {
                 return reassembled
             }
         }
-    }
-
-    private func sendAcknowledgement(for receivedSequence: UInt8) async throws {
-        let frame = BluFiFrame(
-            type: BluFiProtocol.typeValue(package: .control, subtype: .ack),
-            control: [],
-            sequence: takeSendSequence(),
-            data: [receivedSequence]
-        )
-        try await transport.write(BluFiFrameCodec.encode(frame))
-    }
-
-    private func takeSendSequence() -> UInt8 {
-        defer { nextSendSequence &+= 1 }
-        return nextSendSequence
     }
 
     private nonisolated static func withTimeout<T: Sendable>(

@@ -11,8 +11,11 @@ let package = Package(
     products: [
         .library(name: "BluFiKit", targets: ["BluFiKit"])
     ],
+    dependencies: [
+        .package(url: "https://github.com/attaswift/BigInt.git", from: "5.1.0")
+    ],
     targets: [
-        .target(name: "BluFiKit"),
+        .target(name: "BluFiKit", dependencies: ["BigInt"]),
         .testTarget(name: "BluFiKitTests", dependencies: ["BluFiKit"])
     ]
 )

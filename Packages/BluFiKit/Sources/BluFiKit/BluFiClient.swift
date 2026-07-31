@@ -36,9 +36,11 @@ public actor BluFiClient {
     }
 
     public func requestDeviceVersion() async throws -> BluFiDeviceVersion {
+        let options = await session.defaultCommandOptions()
         let response = try await session.request(
             type: BluFiProtocol.typeValue(package: .control, subtype: .getVersion),
-            responseType: BluFiProtocol.typeValue(package: .data, subtype: .version)
+            responseType: BluFiProtocol.typeValue(package: .data, subtype: .version),
+            options: options
         )
         guard response.data.count == 2 else {
             throw BluFiProtocolError.invalidPayload(description: "BluFi version response must contain exactly two bytes.")
@@ -47,18 +49,34 @@ public actor BluFiClient {
     }
 
     public func requestDeviceStatus() async throws -> [UInt8] {
+        let options = await session.defaultCommandOptions()
         let response = try await session.request(
             type: BluFiProtocol.typeValue(package: .control, subtype: .getWiFiStatus),
-            responseType: BluFiProtocol.typeValue(package: .data, subtype: .WiFiConnectionState)
+            responseType: BluFiProtocol.typeValue(package: .data, subtype: .WiFiConnectionState),
+            options: options
         )
         return response.data
     }
 
-    public func postCustomData(_ data: [UInt8], options: BluFiPostOptions = .init()) async throws {
+    public func postCustomData(_ data: [UInt8], requiresAcknowledgement: Bool = false) async throws {
+        let options = await session.defaultCommandOptions(requiresAcknowledgement: requiresAcknowledgement)
         try await session.post(
             type: BluFiProtocol.typeValue(package: .data, subtype: .customData),
             data: data,
             options: options
+        )
+    }
+
+    @discardableResult
+    public func negotiateSecurity(
+        deviceVersion: BluFiDeviceVersion,
+        override: BluFiSecurityOverride = .automatic,
+        requiresAcknowledgement: Bool = false
+    ) async throws -> BluFiProtocol.SecurityVersion {
+        try await session.negotiateSecurity(
+            deviceVersion: deviceVersion,
+            override: override,
+            requiresAcknowledgement: requiresAcknowledgement
         )
     }
 
