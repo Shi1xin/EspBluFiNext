@@ -1,0 +1,7 @@
+.DS_Store
+Config/Local.xcconfig
+EspBlufiNext.xcodeproj/
+build/
+DerivedData/
+Packages/BluFiKit/.build/
+*.xcuserstate

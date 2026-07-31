@@ -1,0 +1,66 @@
+name: EspBlufiNext
+
+options:
+  bundleIdPrefix: com.cyberbacchus
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+configFiles:
+  Debug: Config/Debug.xcconfig
+  Release: Config/Release.xcconfig
+
+packages:
+  BluFiKit:
+    path: Packages/BluFiKit
+
+targets:
+  EspBlufiNext:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources/EspBlufiNext
+    resources:
+      - path: Sources/EspBlufiNext/Resources
+    info:
+      path: Sources/EspBlufiNext/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.cyberbacchus.EspBlufiNext
+        SWIFT_VERSION: "6.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MACCATALYST: false
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: true
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: true
+        INFOPLIST_KEY_UILaunchScreen_Generation: true
+    dependencies:
+      - package: BluFiKit
+        product: BluFiKit
+
+  EspBlufiNextTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests/EspBlufiNextTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.cyberbacchus.EspBlufiNextTests
+        SWIFT_VERSION: "6.0"
+    dependencies:
+      - target: EspBlufiNext
+      - package: BluFiKit
+        product: BluFiKit
+
+schemes:
+  EspBlufiNext:
+    build:
+      targets:
+        EspBlufiNext: all
+        EspBlufiNextTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - EspBlufiNextTests
