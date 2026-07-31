@@ -1,15 +1,18 @@
+import BluFiKit
 import SwiftUI
 import UIKit
 
 @main
 struct EspBlufiNextApp: App {
     @State private var scanner = BluFiScanner()
+    @State private var session = BluFiSessionController()
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .frame(minWidth: 320, minHeight: 460)
                 .environment(scanner)
+                .environment(session)
         }
         .windowResizability(.contentMinSize)
     }
@@ -20,7 +23,9 @@ private struct RootView: View {
 
     var body: some View {
         TabView(selection: $selection) {
-            DeviceListView()
+            DeviceListView {
+                selection = .session
+            }
                 .tabItem { Label("Devices", systemImage: "dot.radiowaves.left.and.right") }
                 .tag(Tab.devices)
 
@@ -44,6 +49,8 @@ private enum Tab: Hashable {
 
 private struct DeviceListView: View {
     @Environment(BluFiScanner.self) private var scanner
+    @Environment(BluFiSessionController.self) private var session
+    let showSession: () -> Void
 
     var body: some View {
         NavigationStack {
@@ -97,7 +104,18 @@ private struct DeviceListView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
 
                     ForEach(scanner.devices) { device in
-                        DeviceRow(device: device)
+                        Button {
+                            Task {
+                                await session.connect(to: device, using: scanner)
+                                if session.isConnected {
+                                    showSession()
+                                }
+                            }
+                        } label: {
+                            DeviceRow(device: device)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(!device.isConnectable || session.phase.isBusy)
                     }
 
                     Divider()
@@ -180,19 +198,174 @@ private struct DeviceRow: View {
 }
 
 #Preview("Devices") {
-    DeviceListView()
+    DeviceListView(showSession: {})
         .environment(BluFiScanner.preview())
+        .environment(BluFiSessionController())
 }
 
 private struct SessionView: View {
+    @Environment(BluFiScanner.self) private var scanner
+    @Environment(BluFiSessionController.self) private var session
+    @State private var stationSSID = ""
+    @State private var stationPassword = ""
+
     var body: some View {
         NavigationStack {
-            ContentUnavailableView(
-                "No Active Session",
-                systemImage: "antenna.radiowaves.left.and.right.slash",
-                description: Text("Connect to a device to inspect BluFi status and send commands.")
-            )
+            Group {
+                if session.isConnected, let device = session.connectedDevice {
+                    sessionContent(for: device)
+                } else {
+                    ContentUnavailableView(
+                        "No Active Session",
+                        systemImage: "antenna.radiowaves.left.and.right.slash",
+                        description: Text("Connect to a device to inspect BluFi status and send commands.")
+                    )
+                }
+            }
             .navigationTitle("Session")
+            .toolbar {
+                if session.isConnected {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Disconnect", systemImage: "xmark.circle") {
+                            Task {
+                                await session.disconnect(using: scanner)
+                            }
+                        }
+                        .disabled(session.phase.isBusy)
+                    }
+                }
+            }
+        }
+    }
+
+    private func sessionContent(for device: BluFiDiscoveredDevice) -> some View {
+        Form {
+            Section {
+                HStack(spacing: 10) {
+                    if session.phase.isBusy {
+                        ProgressView()
+                    }
+                    Text(session.phase.title)
+                        .font(.headline)
+                }
+
+                if let lastError = session.lastError {
+                    Text(lastError)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                }
+            }
+
+            Section("Device") {
+                LabeledContent("Name", value: device.name)
+                LabeledContent("Identifier", value: device.id.uuidString.lowercased())
+                    .font(.caption.monospaced())
+                LabeledContent("RSSI", value: "\(device.rssi) dBm")
+
+                if let version = session.deviceVersion {
+                    LabeledContent("BluFi Version", value: "\(version.major).\(version.minor)")
+                }
+
+                LabeledContent(
+                    "Security",
+                    value: session.securityVersion.map { "V\($0.rawValue)" } ?? "Not negotiated"
+                )
+            }
+
+            Section("Commands") {
+                Button("Establish Secure Session", systemImage: "lock.shield") {
+                    Task {
+                        await session.negotiateSecurity()
+                    }
+                }
+                .disabled(session.phase.isBusy || session.deviceVersion == nil)
+
+                Button("Read Wi-Fi Status", systemImage: "wifi") {
+                    Task {
+                        await session.refreshWiFiStatus()
+                    }
+                }
+                .disabled(session.phase.isBusy)
+
+                Button("Scan Wi-Fi from Device", systemImage: "wifi.magnifyingglass") {
+                    Task {
+                        await session.scanDeviceWiFi()
+                    }
+                }
+                .disabled(session.phase.isBusy)
+            }
+
+            if let status = session.wifiStatus {
+                Section("Wi-Fi Status") {
+                    LabeledContent("Station", value: status.stationState.label)
+                    LabeledContent("IP Address", value: status.hasIP ? "Available" : "Unavailable")
+                    if let ssid = status.stationSSID {
+                        LabeledContent("SSID", value: ssid)
+                    }
+                    if let bssid = status.stationBSSID {
+                        LabeledContent("BSSID", value: bssid)
+                            .font(.caption.monospaced())
+                    }
+                    if let rssi = status.stationRSSI {
+                        LabeledContent("RSSI", value: "\(rssi) dBm")
+                    }
+                    if let reason = status.failureReason {
+                        LabeledContent("Failure Reason", value: String(reason))
+                    }
+                }
+            }
+
+            Section {
+                TextField("SSID", text: $stationSSID)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                SecureField("Password", text: $stationPassword)
+                    .textContentType(.password)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+
+                Button("Send Station Configuration", systemImage: "paperplane") {
+                    Task {
+                        let didProvision = await session.provisionStation(
+                            ssid: stationSSID,
+                            password: stationPassword
+                        )
+                        if didProvision {
+                            stationPassword = ""
+                        }
+                    }
+                }
+                .disabled(session.phase.isBusy || stationSSID.isEmpty)
+            } header: {
+                Text("Provision Station Wi-Fi")
+            } footer: {
+                Text("The password is sent once and is never retained in session state or logs.")
+            }
+
+            if !session.wifiNetworks.isEmpty {
+                Section("Device Wi-Fi Scan") {
+                    ForEach(session.wifiNetworks) { network in
+                        LabeledContent(network.ssid, value: "\(network.rssi) dBm")
+                    }
+                }
+            }
+        }
+    }
+}
+
+private extension BluFiStationConnectionState {
+    var label: String {
+        switch self {
+        case .connected:
+            "Connected"
+        case .failed:
+            "Failed"
+        case .connecting:
+            "Connecting"
+        case .noIP:
+            "No IP Address"
+        case let .unknown(value):
+            "Unknown (\(value))"
         }
     }
 }
