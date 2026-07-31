@@ -29,6 +29,8 @@ enum BluFiGATTError: Error, LocalizedError {
 /// owns only the selected peripheral, GATT discovery, writes and notifications.
 @MainActor
 final class BluFiCoreBluetoothTransport: NSObject, BluetoothTransport, @preconcurrency CBPeripheralDelegate {
+    private static let connectionTimeout: Duration = .seconds(12)
+
     private let peripheral: CBPeripheral
     private weak var central: CBCentralManager?
     private var writeCharacteristic: CBCharacteristic?
@@ -36,6 +38,8 @@ final class BluFiCoreBluetoothTransport: NSObject, BluetoothTransport, @preconcu
     private var connectContinuation: CheckedContinuation<Void, Error>?
     private var readyContinuation: CheckedContinuation<Void, Error>?
     private var writeContinuation: CheckedContinuation<Void, Error>?
+    private var connectionTimeoutTask: Task<Void, Never>?
+    private var preparationTimeoutTask: Task<Void, Never>?
     private var packetReaders: [CheckedContinuation<[UInt8]?, Error>] = []
     private var queuedPackets: [[UInt8]] = []
     private var terminalError: (any Error)?
@@ -61,6 +65,13 @@ final class BluFiCoreBluetoothTransport: NSObject, BluetoothTransport, @preconcu
         self.central = central
         try await withCheckedThrowingContinuation { continuation in
             connectContinuation = continuation
+            connectionTimeoutTask = Task { [weak self] in
+                try? await Task.sleep(for: Self.connectionTimeout)
+                guard !Task.isCancelled else {
+                    return
+                }
+                self?.connectionDidTimeOut()
+            }
             central.connect(peripheral)
         }
     }
@@ -68,6 +79,13 @@ final class BluFiCoreBluetoothTransport: NSObject, BluetoothTransport, @preconcu
     func prepare() async throws {
         try await withCheckedThrowingContinuation { continuation in
             readyContinuation = continuation
+            preparationTimeoutTask = Task { [weak self] in
+                try? await Task.sleep(for: Self.connectionTimeout)
+                guard !Task.isCancelled else {
+                    return
+                }
+                self?.preparationDidTimeOut()
+            }
             peripheral.delegate = self
             peripheral.discoverServices([CBUUID(string: BluFiProtocol.serviceUUID)])
         }
@@ -109,11 +127,15 @@ final class BluFiCoreBluetoothTransport: NSObject, BluetoothTransport, @preconcu
     }
 
     func connected() {
+        connectionTimeoutTask?.cancel()
+        connectionTimeoutTask = nil
         connectContinuation?.resume()
         connectContinuation = nil
     }
 
     func connectionFailed(_ error: (any Error)?) {
+        connectionTimeoutTask?.cancel()
+        connectionTimeoutTask = nil
         let failure = BluFiGATTError.connectionFailed(error?.localizedDescription ?? "Unknown CoreBluetooth error")
         connectContinuation?.resume(throwing: failure)
         connectContinuation = nil
@@ -121,6 +143,10 @@ final class BluFiCoreBluetoothTransport: NSObject, BluetoothTransport, @preconcu
     }
 
     func disconnected(_ error: (any Error)?) {
+        connectionTimeoutTask?.cancel()
+        connectionTimeoutTask = nil
+        preparationTimeoutTask?.cancel()
+        preparationTimeoutTask = nil
         let failure = BluFiGATTError.disconnected(error?.localizedDescription ?? "Peripheral disconnected")
         connectContinuation?.resume(throwing: failure)
         connectContinuation = nil
@@ -181,6 +207,8 @@ final class BluFiCoreBluetoothTransport: NSObject, BluetoothTransport, @preconcu
             failPreparation(BluFiGATTError.notificationSetupFailed(error?.localizedDescription ?? "Notifications remain disabled"))
             return
         }
+        preparationTimeoutTask?.cancel()
+        preparationTimeoutTask = nil
         readyContinuation?.resume()
         readyContinuation = nil
     }
@@ -218,9 +246,33 @@ final class BluFiCoreBluetoothTransport: NSObject, BluetoothTransport, @preconcu
     }
 
     private func failPreparation(_ error: any Error) {
+        preparationTimeoutTask?.cancel()
+        preparationTimeoutTask = nil
         readyContinuation?.resume(throwing: error)
         readyContinuation = nil
         finish(throwing: error)
+    }
+
+    private func connectionDidTimeOut() {
+        guard connectContinuation != nil else {
+            return
+        }
+
+        let error = BluFiGATTError.connectionFailed("Timed out waiting for the device to accept a Bluetooth connection.")
+        central?.cancelPeripheralConnection(peripheral)
+        connectContinuation?.resume(throwing: error)
+        connectContinuation = nil
+        finish(throwing: error)
+    }
+
+    private func preparationDidTimeOut() {
+        guard readyContinuation != nil else {
+            return
+        }
+
+        let error = BluFiGATTError.connectionFailed("Timed out discovering the BluFi service and characteristics.")
+        central?.cancelPeripheralConnection(peripheral)
+        failPreparation(error)
     }
 
     private func finish(throwing error: (any Error)?) {
@@ -228,6 +280,10 @@ final class BluFiCoreBluetoothTransport: NSObject, BluetoothTransport, @preconcu
             return
         }
         isClosed = true
+        connectionTimeoutTask?.cancel()
+        connectionTimeoutTask = nil
+        preparationTimeoutTask?.cancel()
+        preparationTimeoutTask = nil
         terminalError = error
         let termination = error ?? BluFiProtocolError.transportClosed
         connectContinuation?.resume(throwing: termination)
