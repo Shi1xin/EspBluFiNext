@@ -47,6 +47,21 @@ enum BluFiBluetoothState: Equatable, Sendable {
         }
     }
 
+    var symbolName: String {
+        switch self {
+        case .unknown, .resetting:
+            "ellipsis.circle"
+        case .unsupported:
+            "xmark.circle"
+        case .unauthorized:
+            "lock.circle"
+        case .poweredOff:
+            "bluetooth.slash"
+        case .poweredOn:
+            "bluetooth"
+        }
+    }
+
     var canScan: Bool {
         self == .poweredOn
     }
