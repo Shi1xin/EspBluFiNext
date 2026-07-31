@@ -121,8 +121,15 @@ public actor BluFiSession {
         return try BluFiProvisioningParser.wiFiStatus(from: response.data)
     }
 
-    public func configure(_ configuration: BluFiProvisioningConfiguration) async throws {
+    /// Sends a provisioning sequence. When requested for Station mode, consumes
+    /// the device's unsolicited connection report before a firmware may close
+    /// the BluFi GATT session after applying the credentials.
+    public func configure(
+        _ configuration: BluFiProvisioningConfiguration,
+        waitForStationStatus: Bool = false
+    ) async throws -> BluFiWiFiStatus? {
         try configuration.validate()
+        var waitsForStationStatus = false
 
         try await post(
             type: BluFiProtocol.typeValue(package: .control, subtype: .setOperationMode),
@@ -147,6 +154,8 @@ public actor BluFiSession {
                 type: BluFiProtocol.typeValue(package: .control, subtype: .connectWiFi),
                 options: BluFiPostOptions(requiresAcknowledgement: configuration.requiresAcknowledgement)
             )
+
+            waitsForStationStatus = waitForStationStatus
         }
 
         if let softAP = configuration.softAP {
@@ -188,6 +197,8 @@ public actor BluFiSession {
                 requiresAcknowledgement: configuration.requiresAcknowledgement
             )
         }
+
+        return waitsForStationStatus ? await receiveProvisioningStatus() : nil
     }
 
     public func defaultCommandOptions(requiresAcknowledgement: Bool = false) -> BluFiPostOptions {
@@ -266,6 +277,22 @@ public actor BluFiSession {
 
     private func provisioningInterFrameDelay() async throws {
         try await Task.sleep(for: .milliseconds(10))
+    }
+
+    private func receiveProvisioningStatus() async -> BluFiWiFiStatus? {
+        let statusType = BluFiProtocol.typeValue(package: .data, subtype: .WiFiConnectionState)
+
+        do {
+            let response = try await Self.withTimeout(commandTimeout, error: .responseTimeout(type: statusType)) { [self] in
+                try await receiveFrame(matchingType: statusType)
+            }
+            return try BluFiProvisioningParser.wiFiStatus(from: response.data)
+        } catch {
+            // Station credentials and the connect command have already reached
+            // the device. Firmware may end BluFi immediately after applying
+            // them, leaving no report available to consume.
+            return nil
+        }
     }
 
     /// Espressif's Android client pauses between the negotiation length and

@@ -78,8 +78,14 @@ public actor BluFiClient {
         )
     }
 
-    public func configure(_ configuration: BluFiProvisioningConfiguration) async throws {
-        try await session.configure(configuration)
+    public func configure(
+        _ configuration: BluFiProvisioningConfiguration,
+        waitForStationStatus: Bool = false
+    ) async throws -> BluFiWiFiStatus? {
+        try await session.configure(
+            configuration,
+            waitForStationStatus: waitForStationStatus
+        )
     }
 
     public func closeConnection() async throws {

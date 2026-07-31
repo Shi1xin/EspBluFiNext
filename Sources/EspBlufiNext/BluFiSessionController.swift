@@ -8,6 +8,7 @@ enum BluFiSessionPhase: Equatable {
     case ready
     case securing
     case secured(BluFiProtocol.SecurityVersion)
+    case stationConfigurationSent
     case working(String)
     case failed(String)
 
@@ -23,6 +24,8 @@ enum BluFiSessionPhase: Equatable {
             "Securing Session"
         case let .secured(version):
             "Secure Session (V\(version.rawValue))"
+        case .stationConfigurationSent:
+            "Station Configuration Sent"
         case let .working(operation):
             operation
         case .failed:
@@ -34,7 +37,16 @@ enum BluFiSessionPhase: Equatable {
         switch self {
         case .connecting, .securing, .working:
             true
-        case .idle, .ready, .secured, .failed:
+        case .idle, .ready, .secured, .stationConfigurationSent, .failed:
+            false
+        }
+    }
+
+    var acceptsCommands: Bool {
+        switch self {
+        case .ready, .secured:
+            true
+        case .idle, .connecting, .securing, .stationConfigurationSent, .working, .failed:
             false
         }
     }
@@ -164,8 +176,11 @@ final class BluFiSessionController {
                     password: BluFiSensitiveValue(utf8: password)
                 )
             )
-            try await client.configure(configuration)
-            phase = readyPhase
+            wifiStatus = try await client.configure(
+                configuration,
+                waitForStationStatus: true
+            )
+            phase = wifiStatus == nil ? .stationConfigurationSent : readyPhase
             return true
         } catch is CancellationError {
             phase = readyPhase

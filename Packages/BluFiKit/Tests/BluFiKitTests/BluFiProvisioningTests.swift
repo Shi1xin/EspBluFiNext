@@ -93,7 +93,7 @@ final class BluFiProvisioningTests: XCTestCase {
         )
 
         let configurationTask = Task {
-            try await session.configure(configuration)
+            _ = try await session.configure(configuration)
         }
         let operationModeAck = BluFiFrame(type: 0x00, control: [.inputDirection], sequence: 0, data: [0])
         await transport.receive(try BluFiFrameCodec.encode(operationModeAck))
@@ -106,6 +106,35 @@ final class BluFiProvisioningTests: XCTestCase {
 
         let sensitiveFrame = try BluFiFrameCodec.decode(packets[2])
         XCTAssertEqual(BluFiDiagnosticRedactor.redact(sensitiveFrame).payload, "<redacted: 14 bytes>")
+    }
+
+    func testStationProvisioningConsumesUnsolicitedConnectionReport() async throws {
+        let transport = BluFiFakeTransport()
+        let session = try await BluFiSession(transport: transport, commandTimeout: .seconds(1))
+        let configuration = BluFiProvisioningConfiguration(
+            mode: .station,
+            station: BluFiStationProvisioning(
+                ssid: "home",
+                password: BluFiSensitiveValue(utf8: "station-secret")
+            )
+        )
+
+        let configurationTask = Task {
+            try await session.configure(configuration, waitForStationStatus: true)
+        }
+        let operationModeAck = BluFiFrame(type: 0x00, control: [.inputDirection], sequence: 0, data: [0])
+        await transport.receive(try BluFiFrameCodec.encode(operationModeAck))
+        let connectionReport = BluFiFrame(
+            type: BluFiProtocol.typeValue(package: .data, subtype: .WiFiConnectionState),
+            control: [.inputDirection],
+            sequence: 1,
+            data: [BluFiOperationMode.station.rawValue, 0x00, 0x00]
+        )
+        await transport.receive(try BluFiFrameCodec.encode(connectionReport))
+
+        let status = try await configurationTask.value
+        XCTAssertEqual(status?.stationState, .connected)
+        XCTAssertTrue(status?.hasIP == true)
     }
 
     func testClientRequestsDeviceWiFiScanAndParsesResult() async throws {

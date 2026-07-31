@@ -264,6 +264,12 @@ private struct SessionView: View {
                         .font(.footnote)
                         .foregroundStyle(.red)
                 }
+
+                if case .stationConfigurationSent = session.phase {
+                    Text("The device accepted the Station configuration without a status report. Re-enter provisioning mode and reconnect to query its current Wi-Fi state.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Section("Device") {
@@ -288,21 +294,21 @@ private struct SessionView: View {
                         await session.negotiateSecurity()
                     }
                 }
-                .disabled(session.phase.isBusy || session.deviceVersion == nil)
+                .disabled(!session.phase.acceptsCommands || session.deviceVersion == nil)
 
                 Button("Read Wi-Fi Status", systemImage: "wifi") {
                     Task {
                         await session.refreshWiFiStatus()
                     }
                 }
-                .disabled(session.phase.isBusy)
+                .disabled(!session.phase.acceptsCommands)
 
                 Button("Scan Wi-Fi from Device", systemImage: "wifi.magnifyingglass") {
                     Task {
                         await session.scanDeviceWiFi()
                     }
                 }
-                .disabled(session.phase.isBusy)
+                .disabled(!session.phase.acceptsCommands)
             }
 
             if let status = session.wifiStatus {
@@ -348,7 +354,7 @@ private struct SessionView: View {
                         }
                     }
                 }
-                .disabled(session.phase.isBusy || stationSSID.isEmpty)
+                .disabled(!session.phase.acceptsCommands || stationSSID.isEmpty)
             } header: {
                 Text("Provision Station Wi-Fi")
             } footer: {
