@@ -214,6 +214,7 @@ public actor BluFiSession {
         let options = BluFiPostOptions(requiresAcknowledgement: requiresAcknowledgement)
 
         try await post(type: negotiationType, data: negotiator.totalLengthPayload, options: options)
+        try await securityNegotiationInterFrameDelay()
         try await post(type: negotiationType, data: negotiator.parameterPayload, options: options)
         let response = try await Self.withTimeout(commandTimeout, error: .responseTimeout(type: negotiationType)) { [self] in
             try await receiveFrame(matchingType: negotiationType)
@@ -264,6 +265,12 @@ public actor BluFiSession {
     }
 
     private func provisioningInterFrameDelay() async throws {
+        try await Task.sleep(for: .milliseconds(10))
+    }
+
+    /// Espressif's Android client pauses between the negotiation length and
+    /// PGK payloads so the device can allocate its security buffer.
+    private func securityNegotiationInterFrameDelay() async throws {
         try await Task.sleep(for: .milliseconds(10))
     }
 
