@@ -58,6 +58,9 @@ final class BluFiScanner: NSObject, @preconcurrency CBCentralManagerDelegate {
     @ObservationIgnored
     private var peripherals: [UUID: CBPeripheral] = [:]
 
+    @ObservationIgnored
+    private var activeTransport: BluFiCoreBluetoothTransport?
+
     init(startCentralManager: Bool = true) {
         super.init()
         if startCentralManager {
@@ -96,12 +99,68 @@ final class BluFiScanner: NSObject, @preconcurrency CBCentralManagerDelegate {
         peripherals[id]
     }
 
+    func connect(to device: BluFiDiscoveredDevice) async throws -> BluFiClient {
+        guard let central else {
+            throw BluFiGATTError.connectionFailed("Bluetooth central manager is unavailable")
+        }
+        guard bluetoothState.canScan else {
+            throw BluFiGATTError.connectionFailed("Bluetooth is not ready")
+        }
+        guard let peripheral = peripherals[device.id] else {
+            throw BluFiGATTError.connectionFailed("The selected device is no longer available")
+        }
+
+        stopScanning()
+        activeTransport?.disconnect()
+
+        let transport = BluFiCoreBluetoothTransport(peripheral: peripheral)
+        activeTransport = transport
+        do {
+            try await transport.connect(using: central)
+            try await transport.prepare()
+            return try await BluFiClient(transport: transport, packetLength: transport.packetLength)
+        } catch {
+            if activeTransport === transport {
+                activeTransport = nil
+            }
+            throw error
+        }
+    }
+
+    func disconnectActiveDevice() {
+        activeTransport?.disconnect()
+        activeTransport = nil
+    }
+
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         bluetoothState = BluFiBluetoothState(central.state)
 
         if !bluetoothState.canScan {
             stopScanning()
         }
+    }
+
+    func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
+        guard activeTransport?.matches(peripheral) == true else {
+            return
+        }
+        activeTransport?.connected()
+    }
+
+    func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: (any Error)?) {
+        guard activeTransport?.matches(peripheral) == true else {
+            return
+        }
+        activeTransport?.connectionFailed(error)
+        activeTransport = nil
+    }
+
+    func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: (any Error)?) {
+        guard activeTransport?.matches(peripheral) == true else {
+            return
+        }
+        activeTransport?.disconnected(error)
+        activeTransport = nil
     }
 
     func centralManager(
