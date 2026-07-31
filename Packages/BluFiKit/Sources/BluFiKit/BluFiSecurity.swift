@@ -58,7 +58,9 @@ public struct BluFiSecurityNegotiator: Sendable {
         if let privateKeyMaterial {
             privateValue = BigUInt(Data(privateKeyMaterial))
         } else {
-            privateValue = BigUInt.randomInteger(lessThan: group.prime - 2) + 2
+            // Draw from [2, p - 2]. `randomInteger(lessThan:)` excludes its
+            // upper bound, so p - 3 keeps p - 1 out of the valid-key range.
+            privateValue = BigUInt.randomInteger(lessThan: group.prime - 3) + 2
         }
 
         guard privateValue > 1, privateValue < group.prime - 1 else {
