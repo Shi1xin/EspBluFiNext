@@ -103,6 +103,93 @@ public actor BluFiSession {
         await transport.disconnect()
     }
 
+    public func requestWiFiScan() async throws -> [BluFiWiFiScanResult] {
+        let response = try await request(
+            type: BluFiProtocol.typeValue(package: .control, subtype: .getWiFiList),
+            responseType: BluFiProtocol.typeValue(package: .data, subtype: .WiFiList),
+            options: defaultCommandOptions()
+        )
+        return try BluFiProvisioningParser.wiFiScanResults(from: response.data)
+    }
+
+    public func requestWiFiStatus() async throws -> BluFiWiFiStatus {
+        let response = try await request(
+            type: BluFiProtocol.typeValue(package: .control, subtype: .getWiFiStatus),
+            responseType: BluFiProtocol.typeValue(package: .data, subtype: .WiFiConnectionState),
+            options: defaultCommandOptions()
+        )
+        return try BluFiProvisioningParser.wiFiStatus(from: response.data)
+    }
+
+    public func configure(_ configuration: BluFiProvisioningConfiguration) async throws {
+        try configuration.validate()
+
+        try await post(
+            type: BluFiProtocol.typeValue(package: .control, subtype: .setOperationMode),
+            data: [configuration.mode.rawValue],
+            options: defaultCommandOptions(requiresAcknowledgement: true)
+        )
+
+        if let station = configuration.station {
+            try await postProvisioningData(
+                subtype: .stationWiFiSSID,
+                data: Array(station.ssid.utf8),
+                requiresAcknowledgement: configuration.requiresAcknowledgement
+            )
+            try await provisioningInterFrameDelay()
+            try await postProvisioningData(
+                subtype: .stationWiFiPassword,
+                data: station.password.bytes,
+                requiresAcknowledgement: configuration.requiresAcknowledgement
+            )
+            try await provisioningInterFrameDelay()
+            try await post(
+                type: BluFiProtocol.typeValue(package: .control, subtype: .connectWiFi),
+                options: BluFiPostOptions(requiresAcknowledgement: configuration.requiresAcknowledgement)
+            )
+        }
+
+        if let softAP = configuration.softAP {
+            if let ssid = softAP.ssid, !ssid.isEmpty {
+                try await postProvisioningData(
+                    subtype: .softAPWiFiSSID,
+                    data: Array(ssid.utf8),
+                    requiresAcknowledgement: configuration.requiresAcknowledgement
+                )
+                try await provisioningInterFrameDelay()
+            }
+            if let password = softAP.password, password.byteCount > 0 {
+                try await postProvisioningData(
+                    subtype: .softAPWiFiPassword,
+                    data: password.bytes,
+                    requiresAcknowledgement: configuration.requiresAcknowledgement
+                )
+                try await provisioningInterFrameDelay()
+            }
+            if let channel = softAP.channel, channel > 0 {
+                try await postProvisioningData(
+                    subtype: .softAPChannel,
+                    data: [channel],
+                    requiresAcknowledgement: configuration.requiresAcknowledgement
+                )
+                try await provisioningInterFrameDelay()
+            }
+            if let maximumConnections = softAP.maximumConnections, maximumConnections > 0 {
+                try await postProvisioningData(
+                    subtype: .softAPMaximumConnectionCount,
+                    data: [maximumConnections],
+                    requiresAcknowledgement: configuration.requiresAcknowledgement
+                )
+                try await provisioningInterFrameDelay()
+            }
+            try await postProvisioningData(
+                subtype: .softAPAuthenticationMode,
+                data: [softAP.security.rawValue],
+                requiresAcknowledgement: configuration.requiresAcknowledgement
+            )
+        }
+    }
+
     public func defaultCommandOptions(requiresAcknowledgement: Bool = false) -> BluFiPostOptions {
         guard security != nil else {
             return BluFiPostOptions(requiresAcknowledgement: requiresAcknowledgement)
@@ -162,6 +249,22 @@ public actor BluFiSession {
             }
             return
         }
+    }
+
+    private func postProvisioningData(
+        subtype: BluFiProtocol.DataSubtype,
+        data: [UInt8],
+        requiresAcknowledgement: Bool
+    ) async throws {
+        try await post(
+            type: BluFiProtocol.typeValue(package: .data, subtype: subtype),
+            data: data,
+            options: defaultCommandOptions(requiresAcknowledgement: requiresAcknowledgement)
+        )
+    }
+
+    private func provisioningInterFrameDelay() async throws {
+        try await Task.sleep(for: .milliseconds(10))
     }
 
     private func receiveFrame(matchingType type: UInt8) async throws -> BluFiFrame {

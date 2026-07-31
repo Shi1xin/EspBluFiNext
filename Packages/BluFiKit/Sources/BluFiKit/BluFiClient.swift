@@ -48,14 +48,12 @@ public actor BluFiClient {
         return BluFiDeviceVersion(major: response.data[0], minor: response.data[1])
     }
 
-    public func requestDeviceStatus() async throws -> [UInt8] {
-        let options = await session.defaultCommandOptions()
-        let response = try await session.request(
-            type: BluFiProtocol.typeValue(package: .control, subtype: .getWiFiStatus),
-            responseType: BluFiProtocol.typeValue(package: .data, subtype: .WiFiConnectionState),
-            options: options
-        )
-        return response.data
+    public func requestDeviceStatus() async throws -> BluFiWiFiStatus {
+        try await session.requestWiFiStatus()
+    }
+
+    public func requestDeviceWiFiScan() async throws -> [BluFiWiFiScanResult] {
+        try await session.requestWiFiScan()
     }
 
     public func postCustomData(_ data: [UInt8], requiresAcknowledgement: Bool = false) async throws {
@@ -78,6 +76,10 @@ public actor BluFiClient {
             override: override,
             requiresAcknowledgement: requiresAcknowledgement
         )
+    }
+
+    public func configure(_ configuration: BluFiProvisioningConfiguration) async throws {
+        try await session.configure(configuration)
     }
 
     public func closeConnection() async throws {
