@@ -6,6 +6,8 @@ Native iOS 26 ESP BluFi diagnostics for engineers who need to discover, connect,
 
 [简体中文](#chinese)
 
+[License](LICENSE) · [Third-party notices](THIRD-PARTY-NOTICES.md) · [Branding guide](docs/BRANDING.md)
+
 ## Project status
 
 The core BLE, BluFi protocol, security, Wi-Fi provisioning, custom-data, diagnostics, and self-signing workflows are implemented. The confirmed hardware baseline is:
@@ -17,6 +19,22 @@ The core BLE, BluFi protocol, security, Wi-Fi provisioning, custom-data, diagnos
 - Station provisioning
 
 Additional chips, ESP-IDF 6.x/V2, SoftAP/APSTA behavior, and broader firmware matrices require separate real-device validation.
+
+BluFi is in Espressif's maintenance mode. This project remains focused on
+diagnostics and interoperability with existing BluFi firmware; it does not
+claim to be an official Espressif client or a production security tool. Use
+current firmware and validate the security behavior of the target device.
+
+## Licensing, trademarks, and release boundary
+
+- Original EspBluFiNext source code is released under the [MIT License](LICENSE).
+- The [third-party notices](THIRD-PARTY-NOTICES.md) include BigInt's MIT license and the Espressif BluFi reference-project notice.
+- The current app does not bundle Espressif's Android/Objective-C reference source, OpenSSL headers/libraries, or ESP-IDF source. Future copied material must retain its exact file-level license and notices.
+- `ESP32` and `BluFi` identify compatibility. EspBluFiNext is an independent project and is not affiliated with, sponsored by, or endorsed by Espressif Systems (Shanghai) Co., Ltd.
+- The app icon, screenshots, and marketing artwork use original assets. The [branding guide](docs/BRANDING.md) defines approved wording and asset rules.
+- GitHub releases provide source and repeatable self-signing steps. Each user signs their own IPA with their Apple Development team.
+
+Protocol reference: [Espressif BluFi documentation](https://docs.espressif.com/projects/esp-idf/en/stable/esp32c2/api-guides/ble/blufi.html). Security background: [ESP-IDF BluFi advisory](https://github.com/espressif/esp-idf/security/advisories/GHSA-9w88-r2vm-qfc4).
 
 ## Features
 
@@ -213,6 +231,19 @@ Read [`AGENTS.md`](AGENTS.md) for repository boundaries, required commands, sign
 EspBluFiNext 是面向 ESP BluFi 调试的原生 iOS 26 应用，使用 SwiftUI、CoreBluetooth 和 BluFiKit，实现设备发现、连接、安全会话、Wi-Fi 配网、状态读取和诊断日志。
 
 当前已完成 BLE、BluFi 协议、安全协商、Wi-Fi 配网、自定义数据、诊断日志和自签名构建流程。已确认的硬件基线为：ESP32-S3、ESP-IDF 5.5.2、BluFi 1.3、Security V1、Station 配网。
+
+BluFi 处于乐鑫维护模式。本项目面向现有 BluFi 固件的调试和互操作，不代表乐鑫官方客户端或生产环境安全工具。请使用已更新的设备固件，并自行验证目标设备的安全行为。
+
+### 许可证、商标与发布边界
+
+- EspBluFiNext 自有源代码使用 [`MIT License`](LICENSE)。
+- [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) 包含 BigInt 的 MIT 许可证和 Espressif BluFi 参考项目的许可证来源说明。
+- 当前应用未捆绑 Espressif Android/Objective-C 参考源代码、OpenSSL 头文件/库或 ESP-IDF 源码。未来加入第三方文件时，必须保留其准确的文件级许可证和声明。
+- `ESP32` 和 `BluFi` 仅用于描述兼容性。EspBluFiNext 是独立项目，与 Espressif Systems (Shanghai) Co., Ltd. 无隶属、赞助或背书关系。
+- App 图标、截图和宣传素材使用自有资产；[`docs/BRANDING.md`](docs/BRANDING.md) 规定了可用措辞和素材边界。
+- GitHub 发布源代码和可复现的自签名步骤；每位使用者使用自己的 Apple Development Team 签名 IPA。
+
+协议参考：[乐鑫 BluFi 文档](https://docs.espressif.com/projects/esp-idf/en/stable/esp32c2/api-guides/ble/blufi.html)。安全背景：[ESP-IDF BluFi 安全公告](https://github.com/espressif/esp-idf/security/advisories/GHSA-9w88-r2vm-qfc4)。
 
 ### 主要功能
 

@@ -15,6 +15,16 @@ The app is distributed from GitHub source code. Each user supplies their own App
 - Version defaults live in `Config/Debug.xcconfig` and `Config/Release.xcconfig`. Release scripts can override them with `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`.
 - Keep protocol behavior, signing configuration, and user credentials separate from UI-only changes.
 
+## Release, licensing, and branding
+
+- `LICENSE` covers original EspBluFiNext source code. The current project uses the MIT License.
+- `THIRD-PARTY-NOTICES.md` records BigInt's MIT license and Espressif BluFi reference-project provenance. Keep it synchronized when package dependencies or copied source change.
+- The app target bundles `Sources/EspBlufiNext/Resources/THIRD-PARTY-NOTICES.md` so a self-signed IPA exposes the same notices as the GitHub source release. Keep it aligned with the repository-level `THIRD-PARTY-NOTICES.md`, and run `xcodegen generate` after changing resource paths.
+- Keep Espressif's Java/Objective-C reference source, OpenSSL headers/libraries, and ESP-IDF files out of the app unless their exact file-level license and notice are reviewed first.
+- Use `ESP32` and `BluFi` to describe compatibility. Do not present EspBluFiNext as an official Espressif product, and do not add Espressif logos, wordmarks, official screenshots, or official app assets.
+- Keep the independent-project statement in `README.md`, `docs/BRANDING.md`, the About screen, and release descriptions. The approved wording is documented in `docs/BRANDING.md`.
+- The project name, app icon, screenshots, and marketing artwork must remain visually distinct from Espressif branding.
+
 ## Module boundaries
 
 | Area | Responsibility |

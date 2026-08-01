@@ -1,4 +1,5 @@
-/// Protocol constants mirrored from Espressif's Android lib-blufi 2.5.1.
+/// Protocol constants validated against Espressif's Android lib-blufi 2.5.1
+/// and the BluFi protocol documentation.
 ///
 /// This file is the phase-0 contract for frame construction and parsing. It
 /// deliberately leaves transport, reliability, and cryptographic state to
@@ -64,7 +65,8 @@ public enum BluFiProtocol {
         case v2 = 2
     }
 
-    /// Android lib-blufi 2.5.1 selects V2 for device version 0x0104 and newer.
+    /// The V1/V2 selection threshold follows Android lib-blufi 2.5.1:
+    /// device version 0x0104 and newer selects V2.
     public static func securityVersion(forDeviceVersion deviceVersion: UInt16) -> SecurityVersion {
         deviceVersion >= securityV2DeviceVersion ? .v2 : .v1
     }

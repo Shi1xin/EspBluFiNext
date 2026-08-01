@@ -82,10 +82,25 @@ struct SettingsView: View {
                 Text("These values follow the system accessibility settings. Glass surfaces switch to opaque system backgrounds when transparency is reduced.")
             }
 
-            Section("About") {
+            Section {
                 LabeledContent("App", value: "EspBluFiNext")
+                LabeledContent("App license", value: "MIT")
                 LabeledContent("Minimum iOS", value: "iOS 26")
                 LabeledContent("BluFi service", value: "FFFF")
+
+                NavigationLink {
+                    OpenSourceLicensesView()
+                } label: {
+                    Label("Open Source Licenses", systemImage: "doc.text")
+                }
+
+                Text("EspBluFiNext is an independent iOS diagnostic client for Espressif BluFi-compatible ESP32 devices. It is not affiliated with, sponsored by, or endorsed by Espressif Systems (Shanghai) Co., Ltd. \"ESP32\" and \"BluFi\" are used only to describe compatibility.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("About")
+            } footer: {
+                Text("Third-party notices are also included in the source repository and in this app bundle.")
             }
         }
         .navigationTitle("Settings")

@@ -79,8 +79,9 @@ public enum BluFiProtocolError: Error, Sendable, Equatable, LocalizedError {
 }
 
 public enum BluFiCRC16 {
-    /// Espressif lib-blufi's CRC-16 implementation. The complemented input and
-    /// output let callers extend an existing calculation one byte range at a time.
+    /// CRC-16 behavior compatible with Espressif lib-blufi. The complemented
+    /// input and output let callers extend an existing calculation one byte
+    /// range at a time.
     public static func calculate(_ bytes: some Collection<UInt8>, initial: UInt16 = 0) -> UInt16 {
         var crc = ~initial
 

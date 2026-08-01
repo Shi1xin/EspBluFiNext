@@ -28,7 +28,8 @@ public struct BluFiPostOptions: Sendable, Equatable {
 
 /// Serializes all frame writes and notifications for one active BluFi device.
 /// A session starts its send and receive sequence counters at zero, matching
-/// Espressif's Android lib-blufi 2.5.1 implementation.
+/// the interoperability behavior observed in Espressif's Android lib-blufi
+/// 2.5.1 client.
 public actor BluFiSession {
     private let transport: any BluetoothTransport
     private let packetLength: Int
@@ -303,8 +304,8 @@ public actor BluFiSession {
         }
     }
 
-    /// Espressif's Android client pauses between the negotiation length and
-    /// PGK payloads so the device can allocate its security buffer.
+    /// The Android client pauses between the negotiation length and PGK
+    /// payloads so the device can allocate its security buffer.
     private func securityNegotiationInterFrameDelay() async throws {
         try await Task.sleep(for: .milliseconds(10))
     }

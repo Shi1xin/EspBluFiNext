@@ -96,8 +96,14 @@
 "Reduce Transparency" = "Reduce Transparency";
 "About" = "About";
 "App" = "App";
+"App license" = "App license";
 "Minimum iOS" = "Minimum iOS";
 "BluFi service" = "BluFi service";
+"Open Source Licenses" = "Open Source Licenses";
+"License and attribution information for this app's bundled dependencies." = "License and attribution information for this app's bundled dependencies.";
+"EspBluFiNext is an independent iOS diagnostic client for Espressif BluFi-compatible ESP32 devices. It is not affiliated with, sponsored by, or endorsed by Espressif Systems (Shanghai) Co., Ltd. \"ESP32\" and \"BluFi\" are used only to describe compatibility." = "EspBluFiNext is an independent iOS diagnostic client for Espressif BluFi-compatible ESP32 devices. It is not affiliated with, sponsored by, or endorsed by Espressif Systems (Shanghai) Co., Ltd. \"ESP32\" and \"BluFi\" are used only to describe compatibility.";
+"Third-party notices are also included in the source repository and in this app bundle." = "Third-party notices are also included in the source repository and in this app bundle.";
+"Third-party notices are unavailable in this build. See the source repository for the complete notice file." = "Third-party notices are unavailable in this build. See the source repository for the complete notice file.";
 "5 seconds" = "5 seconds";
 "15 seconds" = "15 seconds";
 "30 seconds" = "30 seconds";
