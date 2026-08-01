@@ -6,7 +6,7 @@
           "fill-specializations": [
             {
               "value": {
-                "solid": "extended-srgb:0.08000,0.09000,0.10000,1.00000"
+                "solid": "extended-srgb:0.14000,0.15000,0.17000,1.00000"
               }
             },
             {
@@ -28,7 +28,7 @@
           "fill-specializations": [
             {
               "value": {
-                "solid": "extended-srgb:0.08000,0.09000,0.10000,1.00000"
+                "solid": "extended-srgb:0.14000,0.15000,0.17000,1.00000"
               }
             },
             {
@@ -50,7 +50,7 @@
           "fill-specializations": [
             {
               "value": {
-                "solid": "extended-srgb:0.08000,0.09000,0.10000,1.00000"
+                "solid": "extended-srgb:0.14000,0.15000,0.17000,1.00000"
               }
             },
             {
@@ -86,7 +86,7 @@
               "value": "automatic"
             }
           ],
-          "glass": true,
+          "glass": false,
           "image-name": "v-band.svg",
           "name": "V band"
         },
@@ -116,10 +116,10 @@
       ],
       "lighting": "combined",
       "shadow": {
-        "kind": "neutral",
-        "opacity": 0.28
+        "kind": "none",
+        "opacity": 0
       },
-      "specular": true,
+      "specular": false,
       "translucency": {
         "enabled": false,
         "value": 0
