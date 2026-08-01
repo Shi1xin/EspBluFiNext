@@ -1,30 +1,15 @@
 import BluFiKit
 import SwiftUI
-import UIKit
 
 struct SessionDashboardHeader: View {
     @Environment(BluFiSessionController.self) private var session
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let device: BluFiDiscoveredDevice
 
     var body: some View {
         cardContent
-            .padding(20)
+            .padding(.vertical, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                Color(uiColor: .secondarySystemGroupedBackground),
-                in: RoundedRectangle(cornerRadius: 22, style: .continuous)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .strokeBorder(.white.opacity(0.08), lineWidth: 1)
-            }
-            .transaction { transaction in
-                if reduceMotion {
-                    transaction.animation = nil
-                }
-            }
             .accessibilityElement(children: .combine)
     }
 
@@ -196,14 +181,16 @@ private extension BluFiStationConnectionState {
 }
 
 #Preview("Session Dashboard Header") {
-    SessionDashboardHeader(
-        device: BluFiDiscoveredDevice(
-            id: UUID(uuidString: "98A316CD-05AC-4F00-8000-000000000001")!,
-            name: "xiaozhi",
-            rssi: -48,
-            isConnectable: true
+    Form {
+        SessionDashboardHeader(
+            device: BluFiDiscoveredDevice(
+                id: UUID(uuidString: "98A316CD-05AC-4F00-8000-000000000001")!,
+                name: "xiaozhi",
+                rssi: -48,
+                isConnectable: true
+            )
         )
-    )
-    .padding()
+        .listRowSeparator(.hidden)
+    }
     .environment(BluFiSessionController())
 }
