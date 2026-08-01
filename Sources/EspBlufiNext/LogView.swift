@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 import UIKit
 
@@ -6,8 +7,7 @@ struct LogView: View {
     @Environment(BluFiDiagnosticsStore.self) private var diagnostics
 
     @State private var filter: BluFiLogFilter = .all
-    @State private var isExporting = false
-    @State private var exportDocument = BluFiDiagnosticExportDocument()
+    @State private var shareItem: DiagnosticShareItem?
     @State private var exportError: String?
 
     private var filteredEvents: [BluFiDiagnosticEvent] {
@@ -83,7 +83,7 @@ struct LogView: View {
                     Button("Copy", systemImage: "doc.on.doc", action: copyFilteredEvents)
                         .disabled(filteredEvents.isEmpty)
 
-                    Button("Export", systemImage: "square.and.arrow.up", action: prepareExport)
+                    Button("Share", systemImage: "square.and.arrow.up", action: prepareShare)
                         .disabled(diagnostics.events.isEmpty && diagnostics.sessions.isEmpty)
 
                     Button("Clear", systemImage: "trash", role: .destructive, action: diagnostics.clear)
@@ -91,15 +91,11 @@ struct LogView: View {
                 }
             }
         }
-        .fileExporter(
-            isPresented: $isExporting,
-            document: exportDocument,
-            contentType: .json,
-            defaultFilename: "espblufi-diagnostics.json"
-        ) { result in
-            if case let .failure(error) = result {
-                exportError = error.localizedDescription
-            }
+        .sheet(item: $shareItem) { item in
+            ActivityView(url: item.url)
+                .onDisappear {
+                    try? FileManager.default.removeItem(at: item.url)
+                }
         }
         .alert("Export Error", isPresented: exportErrorPresented) {
             Button("OK", role: .cancel) {}
@@ -119,14 +115,32 @@ struct LogView: View {
         UIPasteboard.general.string = diagnostics.plainText(events: filteredEvents)
     }
 
-    private func prepareExport() {
+    private func prepareShare() {
         do {
-            exportDocument = BluFiDiagnosticExportDocument(data: try diagnostics.exportData())
-            isExporting = true
+            let fileName = "espblufi-diagnostics-" + String(Int(Date().timeIntervalSince1970)) + ".json"
+            let url = FileManager.default.temporaryDirectory
+                .appendingPathComponent(fileName)
+            try diagnostics.exportData().write(to: url, options: .atomic)
+            shareItem = DiagnosticShareItem(url: url)
         } catch {
             exportError = error.localizedDescription
         }
     }
+}
+
+private struct DiagnosticShareItem: Identifiable {
+    let id = UUID()
+    let url: URL
+}
+
+private struct ActivityView: UIViewControllerRepresentable {
+    let url: URL
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: [url], applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ viewController: UIActivityViewController, context: Context) {}
 }
 
 private enum BluFiLogFilter: String, CaseIterable, Identifiable {
