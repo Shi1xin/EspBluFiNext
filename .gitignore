@@ -5,4 +5,5 @@ EspBlufiNext.xcodeproj/
 build/
 DerivedData/
 Packages/BluFiKit/.build/
+Packages/BluFiKit/.swiftpm/
 *.xcuserstate

@@ -143,7 +143,11 @@ private struct DeviceRow: View {
                     .font(.headline)
                     .lineLimit(2)
                     .layoutPriority(1)
-                DeviceIdentifierView(identifier: device.id, showsLabel: false)
+                Text(device.id.uuidString.lowercased())
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                    .lineLimit(2)
             }
 
             Spacer(minLength: 8)

@@ -4,8 +4,6 @@ import SwiftUI
 struct SessionDashboardHeader: View {
     @Environment(BluFiSessionController.self) private var session
 
-    let device: BluFiDiscoveredDevice
-
     var body: some View {
         cardContent
             .padding(.vertical, 12)
@@ -22,18 +20,10 @@ struct SessionDashboardHeader: View {
                     .foregroundStyle(phaseColor)
                     .frame(width: 30, alignment: .leading)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(session.phase.title.appLocalizedKey)
-                        .font(.headline)
-                        .foregroundStyle(phaseColor)
-                        .lineLimit(2)
-
-                    Text(verbatim: device.name)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                        .textSelection(.enabled)
-                }
+                Text(session.phase.title.appLocalizedKey)
+                    .font(.headline)
+                    .foregroundStyle(phaseColor)
+                    .lineLimit(2)
 
                 Spacer(minLength: 8)
             }
@@ -196,14 +186,7 @@ private extension BluFiStationConnectionState {
 
 #Preview("Session Dashboard Header") {
     Form {
-        SessionDashboardHeader(
-            device: BluFiDiscoveredDevice(
-                id: UUID(uuidString: "98A316CD-05AC-4F00-8000-000000000001")!,
-                name: "xiaozhi",
-                rssi: -48,
-                isConnectable: true
-            )
-        )
+        SessionDashboardHeader()
         .listRowSeparator(.hidden)
     }
     .environment(BluFiSessionController())

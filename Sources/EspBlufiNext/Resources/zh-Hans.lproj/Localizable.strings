@@ -63,6 +63,7 @@
 "Payload Error" = "数据格式错误";
 "Export Error" = "导出错误";
 "Copy" = "复制";
+"Copied" = "已复制";
 "Share" = "分享";
 "Export" = "导出";
 "Filter" = "过滤";
@@ -208,6 +209,7 @@
 "Identifier" = "标识符";
 "Show Full Identifier" = "查看完整标识符";
 "Copy Identifier" = "复制标识符";
+"Copy Name" = "复制名称";
 "Name" = "名称";
 "RSSI" = "RSSI";
 "BSSID" = "BSSID";

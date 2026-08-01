@@ -63,6 +63,7 @@
 "Payload Error" = "Payload Error";
 "Export Error" = "Export Error";
 "Copy" = "Copy";
+"Copied" = "Copied";
 "Share" = "Share";
 "Export" = "Export";
 "Filter" = "Filter";
@@ -208,6 +209,7 @@
 "Identifier" = "Identifier";
 "Show Full Identifier" = "Show Full Identifier";
 "Copy Identifier" = "Copy Identifier";
+"Copy Name" = "Copy Name";
 "Name" = "Name";
 "RSSI" = "RSSI";
 "BSSID" = "BSSID";

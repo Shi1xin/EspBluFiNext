@@ -92,14 +92,16 @@ private struct SessionDetailView: View {
     @Environment(BluFiDiagnosticsStore.self) private var diagnostics
     @State private var stationSSID = ""
     @State private var stationPassword = ""
+    @State private var isCopyToastPresented = false
+    @State private var copyToastID = UUID()
 
     let device: BluFiDiscoveredDevice
 
     var body: some View {
         Form {
-            SessionDashboardHeader(device: device)
+            SessionDashboardHeader()
 
-            SessionDeviceSection(device: device)
+            SessionDeviceSection(device: device, onCopy: showCopyToast)
             SessionCommandsSection(
                 device: device,
                 stationSSID: $stationSSID,
@@ -115,6 +117,29 @@ private struct SessionDetailView: View {
             if !session.wifiNetworks.isEmpty {
                 DeviceWiFiScanSection(networks: session.wifiNetworks)
             }
+        }
+        .overlay(alignment: .bottom) {
+            if isCopyToastPresented {
+                CopyToast {
+                    withAnimation(.snappy) {
+                        isCopyToastPresented = false
+                    }
+                }
+                .id(copyToastID)
+                .padding(.bottom, 16)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.snappy, value: isCopyToastPresented)
+        .onDisappear {
+            isCopyToastPresented = false
+        }
+    }
+
+    private func showCopyToast() {
+        copyToastID = UUID()
+        withAnimation(.snappy) {
+            isCopyToastPresented = true
         }
     }
 
@@ -141,16 +166,13 @@ private struct SessionDetailView: View {
 private struct SessionDeviceSection: View {
     @Environment(BluFiSessionController.self) private var session
     let device: BluFiDiscoveredDevice
+    let onCopy: () -> Void
 
     var body: some View {
         Section("Device") {
-            LabeledContent("Name", value: device.name)
-            DeviceIdentifierView(identifier: device.id)
+            DeviceNameView(name: device.name, onCopy: onCopy)
+            DeviceIdentifierView(identifier: device.id, onCopy: onCopy)
             LabeledContent("RSSI", value: "\(device.rssi) dBm")
-
-            if let version = session.deviceVersion {
-                LabeledContent("BluFi Version", value: "\(version.major).\(version.minor)")
-            }
 
             LabeledContent("Security") {
                 Text((session.securityVersion.map { "V\($0.rawValue)" } ?? "Not negotiated").appLocalizedKey)
@@ -251,5 +273,25 @@ private struct DeviceWiFiScanSection: View {
                 LabeledContent(network.ssid, value: "\(network.rssi) dBm")
             }
         }
+    }
+}
+
+private struct CopyToast: View {
+    let dismiss: () -> Void
+
+    var body: some View {
+        Label("Copied", systemImage: "checkmark.circle.fill")
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(.regularMaterial, in: Capsule())
+            .shadow(color: .black.opacity(0.25), radius: 12, y: 4)
+            .task {
+                try? await Task.sleep(for: .seconds(1.5))
+                guard !Task.isCancelled else {
+                    return
+                }
+                dismiss()
+            }
     }
 }
