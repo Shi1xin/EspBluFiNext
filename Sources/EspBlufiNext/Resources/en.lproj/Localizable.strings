@@ -40,8 +40,6 @@
 "The ESP device did not report any nearby Wi-Fi networks." = "The ESP device did not report any nearby Wi-Fi networks.";
 "Close" = "Close";
 "Networks" = "Networks";
-"Password for %@" = "Password for %@";
-"Use This Network" = "Use This Network";
 "Wi-Fi Status" = "Wi-Fi Status";
 "Provisioning" = "Provisioning";
 "Provision Station Wi-Fi" = "Provision Station Wi-Fi";

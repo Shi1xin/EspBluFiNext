@@ -65,7 +65,7 @@ struct ProvisioningView: View {
                 }
                 .disabled(isReadingCurrentWiFi || !session.phase.acceptsCommands)
 
-                Button("Scan Wi-Fi from Device", systemImage: "wifi.magnifyingglass") {
+                Button("Scan Wi-Fi from Device", systemImage: "wifi") {
                     scanWiFi()
                 }
                 .disabled(session.phase.isBusy || !session.phase.acceptsCommands)
@@ -124,9 +124,8 @@ struct ProvisioningView: View {
         .navigationTitle("Provisioning")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $isWiFiPickerPresented) {
-            ProvisioningWiFiPicker(networks: session.wifiNetworks) { selectedSSID, selectedPassword in
+            ProvisioningWiFiPicker(networks: session.wifiNetworks) { selectedSSID in
                 ssid = selectedSSID
-                password = selectedPassword
                 isWiFiPickerPresented = false
                 focusedField = .password
             }
@@ -166,13 +165,9 @@ struct ProvisioningView: View {
 
 private struct ProvisioningWiFiPicker: View {
     @Environment(\.dismiss) private var dismiss
-    @FocusState private var passwordFocused: Bool
 
     let networks: [BluFiWiFiScanResult]
-    let apply: (String, String) -> Void
-
-    @State private var selectedNetwork: BluFiWiFiScanResult?
-    @State private var password = ""
+    let apply: (String) -> Void
 
     var body: some View {
         NavigationStack {
@@ -196,21 +191,16 @@ private struct ProvisioningWiFiPicker: View {
 
                         ForEach(networks) { network in
                             Button {
-                                selectedNetwork = network
-                                passwordFocused = true
+                                apply(network.ssid)
+                                dismiss()
                             } label: {
                                 HStack(spacing: 12) {
                                     Text(network.ssid)
                                         .lineLimit(1)
-                                        .foregroundStyle(network.id == selectedNetwork?.id ? Color.accentColor : .primary)
                                     Spacer(minLength: 8)
                                     Text("\(network.rssi) dBm")
                                         .font(.caption.monospacedDigit())
                                         .foregroundStyle(.secondary)
-                                    if network.id == selectedNetwork?.id {
-                                        Image(systemName: "checkmark")
-                                            .foregroundStyle(.tint)
-                                    }
                                 }
                                 .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
                                 .contentShape(Rectangle())
@@ -221,27 +211,6 @@ private struct ProvisioningWiFiPicker: View {
                             Divider()
                                 .padding(.leading, 20)
                         }
-                    }
-
-                    if let selectedNetwork {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Password for \(selectedNetwork.ssid)")
-                                .font(.headline)
-
-                            SecureField("Network password", text: $password)
-                                .focused($passwordFocused)
-                                .textContentType(.password)
-                                .textInputAutocapitalization(.never)
-                                .autocorrectionDisabled()
-                                .textFieldStyle(.roundedBorder)
-
-                            Button("Use This Network", systemImage: "checkmark") {
-                                apply(selectedNetwork.ssid, password)
-                                dismiss()
-                            }
-                            .foregroundStyle(.tint)
-                        }
-                        .padding(20)
                     }
                 }
             }

@@ -178,7 +178,7 @@ private struct SessionCommandsSection: View {
             Button("Read Wi-Fi Status", systemImage: "wifi", action: readWiFiStatus)
                 .disabled(!session.phase.acceptsCommands)
 
-            Button("Scan Wi-Fi from Device", systemImage: "wifi.magnifyingglass", action: scanDeviceWiFi)
+            Button("Scan Wi-Fi from Device", systemImage: "wifi", action: scanDeviceWiFi)
                 .disabled(!session.phase.acceptsCommands)
 
             NavigationLink {
