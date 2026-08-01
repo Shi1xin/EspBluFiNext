@@ -92,7 +92,6 @@ private struct SessionDetailView: View {
     @Environment(BluFiDiagnosticsStore.self) private var diagnostics
     @State private var stationSSID = ""
     @State private var stationPassword = ""
-    @State private var isDeviceWiFiPickerPresented = false
 
     let device: BluFiDiscoveredDevice
 
@@ -117,16 +116,6 @@ private struct SessionDetailView: View {
                 DeviceWiFiScanSection(networks: session.wifiNetworks)
             }
         }
-        .sheet(isPresented: $isDeviceWiFiPickerPresented) {
-            DeviceWiFiPicker(
-                networks: session.wifiNetworks,
-                selectedSSID: stationSSID
-            ) { selectedSSID in
-                stationSSID = selectedSSID
-                isDeviceWiFiPickerPresented = false
-            }
-            .presentationDetents([.medium, .large])
-        }
     }
 
     private func sendStationConfiguration() {
@@ -144,9 +133,7 @@ private struct SessionDetailView: View {
 
     private func scanDeviceWiFi() {
         Task {
-            if await session.scanDeviceWiFi(diagnostics: diagnostics) {
-                isDeviceWiFiPickerPresented = true
-            }
+            await session.scanDeviceWiFi(diagnostics: diagnostics)
         }
     }
 }
@@ -203,6 +190,7 @@ private struct SessionCommandsSection: View {
                 )
             } label: {
                 Label("Provision Station Wi-Fi", systemImage: "paperplane")
+                    .foregroundStyle(.tint)
             }
             .disabled(!session.phase.acceptsCommands)
 
@@ -210,6 +198,7 @@ private struct SessionCommandsSection: View {
                 CustomDataConsoleView()
             } label: {
                 Label("Send and Receive Custom Data", systemImage: "terminal")
+                    .foregroundStyle(.tint)
             }
             .disabled(!session.phase.acceptsCommands)
         }
@@ -221,57 +210,6 @@ private struct SessionCommandsSection: View {
 
     private func readWiFiStatus() {
         Task { await session.refreshWiFiStatus(diagnostics: diagnostics) }
-    }
-}
-
-private struct DeviceWiFiPicker: View {
-    @Environment(\.dismiss) private var dismiss
-
-    let networks: [BluFiWiFiScanResult]
-    let selectedSSID: String
-    let select: (String) -> Void
-
-    var body: some View {
-        NavigationStack {
-            Group {
-                if networks.isEmpty {
-                    ContentUnavailableView(
-                        "No Wi-Fi Networks Found",
-                        systemImage: "wifi.slash",
-                        description: Text("The ESP device did not report any nearby Wi-Fi networks.")
-                    )
-                } else {
-                    List(networks) { network in
-                        Button {
-                            select(network.ssid)
-                            dismiss()
-                        } label: {
-                            HStack(spacing: 12) {
-                                Text(network.ssid)
-                                    .lineLimit(1)
-                                Spacer(minLength: 8)
-                                Text("\(network.rssi) dBm")
-                                    .font(.caption.monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                                if network.ssid == selectedSSID {
-                                    Image(systemName: "checkmark")
-                                        .foregroundStyle(.tint)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Choose Wi-Fi Network")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Close") {
-                        dismiss()
-                    }
-                }
-            }
-        }
     }
 }
 

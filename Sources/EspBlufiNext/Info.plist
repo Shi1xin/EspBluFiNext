@@ -20,6 +20,8 @@
 	<string>1</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>EspBluFi uses Bluetooth to discover and communicate with ESP BluFi devices.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>EspBluFi uses precise location access to read the current iPhone Wi-Fi network name.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>
