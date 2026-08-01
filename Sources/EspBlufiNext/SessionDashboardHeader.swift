@@ -1,8 +1,11 @@
 import BluFiKit
 import SwiftUI
+import UIKit
 
 struct SessionDashboardHeader: View {
     @Environment(BluFiSessionController.self) private var session
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     let device: BluFiDiscoveredDevice
 
@@ -11,12 +14,17 @@ struct SessionDashboardHeader: View {
             .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
-                if #available(iOS 26, *) {
+                if #available(iOS 26, *), !reduceTransparency {
                     Color.clear
                         .glassEffect(.regular, in: .rect(cornerRadius: 22))
                 } else {
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(.thinMaterial)
+                        .fill(Color(uiColor: .secondarySystemBackground))
+                }
+            }
+            .transaction { transaction in
+                if reduceMotion {
+                    transaction.animation = nil
                 }
             }
             .accessibilityElement(children: .combine)
@@ -26,7 +34,7 @@ struct SessionDashboardHeader: View {
     private var cardContent: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Label(session.phase.title, systemImage: phaseSymbol)
+                Label(session.phase.title.appLocalizedKey, systemImage: phaseSymbol)
                     .font(.headline)
                     .foregroundStyle(phaseColor)
 
@@ -40,15 +48,15 @@ struct SessionDashboardHeader: View {
 
             if #available(iOS 26, *) {
                 GlassEffectContainer(spacing: 10) {
-                    statusPills
+                    statusPillLayout
                 }
             } else {
-                statusPills
+                statusPillLayout
             }
         }
     }
 
-    private var statusPills: some View {
+    private var statusPillRow: some View {
         HStack(spacing: 10) {
             DashboardStatusPill(
                 title: "BluFi",
@@ -67,6 +75,16 @@ struct SessionDashboardHeader: View {
                     systemImage: "wifi"
                 )
             }
+        }
+    }
+
+    private var statusPillLayout: some View {
+        ViewThatFits(in: .horizontal) {
+            statusPillRow
+            ScrollView(.horizontal, showsIndicators: false) {
+                statusPillRow
+            }
+            .scrollBounceBehavior(.basedOnSize)
         }
     }
 
@@ -114,6 +132,8 @@ struct SessionDashboardHeader: View {
 }
 
 private struct DashboardStatusPill: View {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
     let title: String
     let value: String
     let systemImage: String
@@ -121,10 +141,10 @@ private struct DashboardStatusPill: View {
     var body: some View {
         Label {
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                Text(title.appLocalizedKey)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                Text(value)
+                Text(value.appLocalizedKey)
                     .font(.caption.weight(.semibold))
                     .lineLimit(1)
             }
@@ -136,12 +156,12 @@ private struct DashboardStatusPill: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .background {
-            if #available(iOS 26, *) {
+            if #available(iOS 26, *), !reduceTransparency {
                 Color.clear
                     .glassEffect(.regular, in: .capsule)
             } else {
                 Capsule()
-                    .fill(.quaternary)
+                    .fill(Color(uiColor: .tertiarySystemBackground))
             }
         }
     }

@@ -14,7 +14,9 @@ struct ProvisioningView: View {
         Form {
             Section("Target") {
                 LabeledContent("Device", value: device.name)
-                LabeledContent("Mode", value: "Station")
+                LabeledContent("Mode") {
+                    Text("Station".appLocalizedKey)
+                }
             }
 
             Section {
@@ -40,7 +42,7 @@ struct ProvisioningView: View {
                 Section {
                     HStack(spacing: 10) {
                         ProgressView()
-                        Text(session.phase.title)
+                        Text(session.phase.title.appLocalizedKey)
                     }
                 }
             }

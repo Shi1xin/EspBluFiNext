@@ -63,6 +63,7 @@ final class BluFiSessionController {
     private(set) var securityVersion: BluFiProtocol.SecurityVersion?
     private(set) var wifiStatus: BluFiWiFiStatus?
     private(set) var wifiNetworks: [BluFiWiFiScanResult] = []
+    private(set) var customMessages: [BluFiConsoleMessage] = []
     private(set) var lastError: String?
 
     @ObservationIgnored
@@ -78,6 +79,7 @@ final class BluFiSessionController {
     func connect(
         to device: BluFiDiscoveredDevice,
         using scanner: BluFiScanner,
+        settings: AppSettingsStore,
         diagnostics: BluFiDiagnosticsStore
     ) async {
         guard !phase.isBusy else {
@@ -98,9 +100,14 @@ final class BluFiSessionController {
         lastError = nil
         wifiStatus = nil
         wifiNetworks = []
+        customMessages = []
 
         do {
-            let client = try await scanner.connect(to: device)
+            let client = try await scanner.connect(
+                to: device,
+                commandTimeout: settings.commandTimeout,
+                packetLength: settings.packetLength
+            )
             record(
                 diagnostics,
                 category: .connection,
@@ -341,6 +348,121 @@ final class BluFiSessionController {
         }
     }
 
+    @discardableResult
+    func sendCustomData(
+        _ data: [UInt8],
+        format: BluFiPayloadFormat,
+        diagnostics: BluFiDiagnosticsStore
+    ) async -> Bool {
+        guard let client, !phase.isBusy else {
+            return false
+        }
+
+        record(
+            diagnostics,
+            category: .command,
+            title: "Custom data send started",
+            detail: "\(format.title) · \(data.count) byte(s)"
+        )
+        phase = .working("Sending Custom Data")
+        lastError = nil
+
+        do {
+            try await client.postCustomData(data)
+            customMessages.insert(
+                BluFiConsoleMessage(direction: .sent, format: format, bytes: data),
+                at: 0
+            )
+            phase = readyPhase
+            record(
+                diagnostics,
+                category: .protocolExchange,
+                title: "Custom data sent",
+                detail: "\(format.title) · \(data.count) byte(s)"
+            )
+            return true
+        } catch is CancellationError {
+            record(
+                diagnostics,
+                category: .command,
+                severity: .warning,
+                title: "Custom data send cancelled"
+            )
+            phase = readyPhase
+            return false
+        } catch {
+            record(
+                diagnostics,
+                category: .command,
+                severity: .error,
+                title: "Custom data send failed",
+                detail: error.localizedDescription
+            )
+            phase = .failed(error.localizedDescription)
+            lastError = error.localizedDescription
+            return false
+        }
+    }
+
+    @discardableResult
+    func receiveCustomData(
+        format: BluFiPayloadFormat,
+        diagnostics: BluFiDiagnosticsStore
+    ) async -> Bool {
+        guard let client, !phase.isBusy else {
+            return false
+        }
+
+        record(
+            diagnostics,
+            category: .command,
+            title: "Waiting for custom data",
+            detail: "\(format.title) decoder selected"
+        )
+        phase = .working("Waiting for Custom Data")
+        lastError = nil
+
+        do {
+            let data = try await client.receiveCustomData()
+            customMessages.insert(
+                BluFiConsoleMessage(direction: .received, format: format, bytes: data),
+                at: 0
+            )
+            phase = readyPhase
+            record(
+                diagnostics,
+                category: .protocolExchange,
+                title: "Custom data received",
+                detail: "\(format.title) · \(data.count) byte(s)"
+            )
+            return true
+        } catch is CancellationError {
+            record(
+                diagnostics,
+                category: .command,
+                severity: .warning,
+                title: "Custom data receive cancelled"
+            )
+            phase = readyPhase
+            return false
+        } catch {
+            record(
+                diagnostics,
+                category: .command,
+                severity: .error,
+                title: "Custom data receive failed",
+                detail: error.localizedDescription
+            )
+            phase = .failed(error.localizedDescription)
+            lastError = error.localizedDescription
+            return false
+        }
+    }
+
+    func clearCustomMessages() {
+        customMessages.removeAll()
+    }
+
     func disconnect(using scanner: BluFiScanner, diagnostics: BluFiDiagnosticsStore) async {
         record(diagnostics, category: .connection, title: "Disconnect requested")
         if let client {
@@ -369,6 +491,7 @@ final class BluFiSessionController {
         securityVersion = nil
         wifiStatus = nil
         wifiNetworks = []
+        customMessages = []
         lastError = error?.localizedDescription
         phase = error.map { .failed($0.localizedDescription) } ?? .idle
     }

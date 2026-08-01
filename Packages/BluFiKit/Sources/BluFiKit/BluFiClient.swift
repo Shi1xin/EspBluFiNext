@@ -65,6 +65,13 @@ public actor BluFiClient {
         )
     }
 
+    /// Waits for one unsolicited custom-data frame from the active device.
+    /// The app serializes this operation with all other commands at its session
+    /// controller boundary so a notification has a single reader.
+    public func receiveCustomData() async throws -> [UInt8] {
+        try await session.receiveCustomData()
+    }
+
     @discardableResult
     public func negotiateSecurity(
         deviceVersion: BluFiDeviceVersion,

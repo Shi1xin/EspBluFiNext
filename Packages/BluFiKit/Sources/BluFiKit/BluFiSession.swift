@@ -121,6 +121,14 @@ public actor BluFiSession {
         return try BluFiProvisioningParser.wiFiStatus(from: response.data)
     }
 
+    public func receiveCustomData() async throws -> [UInt8] {
+        let type = BluFiProtocol.typeValue(package: .data, subtype: .customData)
+        let response = try await Self.withTimeout(commandTimeout, error: .responseTimeout(type: type)) { [self] in
+            try await receiveFrame(matchingType: type)
+        }
+        return response.data
+    }
+
     /// Sends a provisioning sequence. When requested for Station mode, consumes
     /// the device's unsolicited connection report before a firmware may close
     /// the BluFi GATT session after applying the credentials.

@@ -139,6 +139,7 @@ final class BluFiDiagnosticsStore {
 
     private(set) var events: [BluFiDiagnosticEvent]
     private(set) var sessions: [BluFiSessionRecord]
+    var minimumSeverity: BluFiDiagnosticSeverity
 
     @ObservationIgnored
     private let defaults: UserDefaults
@@ -159,6 +160,8 @@ final class BluFiDiagnosticsStore {
         self.sessionLimit = max(1, sessionLimit)
         events = []
         sessions = []
+        minimumSeverity = defaults.string(forKey: AppSettingsStore.minimumLogSeverityKey)
+            .flatMap(BluFiDiagnosticSeverity.init(rawValue:)) ?? .debug
         load()
     }
 
@@ -189,6 +192,9 @@ final class BluFiDiagnosticsStore {
         deviceID: UUID? = nil,
         at date: Date = .now
     ) {
+        guard severity.priority >= minimumSeverity.priority else {
+            return
+        }
         let event = BluFiDiagnosticEvent(
             timestamp: date,
             sessionID: sessionID,
@@ -298,5 +304,20 @@ final class BluFiDiagnosticsStore {
         )
         store.finishSession(sessionID, outcome: .active)
         return store
+    }
+}
+
+private extension BluFiDiagnosticSeverity {
+    var priority: Int {
+        switch self {
+        case .debug:
+            0
+        case .info:
+            1
+        case .warning:
+            2
+        case .error:
+            3
+        }
     }
 }

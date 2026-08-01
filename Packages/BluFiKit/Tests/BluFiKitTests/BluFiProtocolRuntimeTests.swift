@@ -103,4 +103,23 @@ final class BluFiProtocolRuntimeTests: XCTestCase {
         XCTAssertEqual(writes.count, 2)
         XCTAssertEqual(writes.map { $0[2] }, [0, 1])
     }
+
+    func testClientReceivesUnsolicitedCustomData() async throws {
+        let transport = BluFiFakeTransport()
+        let client = try await BluFiClient(transport: transport, commandTimeout: .seconds(1))
+        let receiveTask = Task {
+            try await client.receiveCustomData()
+        }
+
+        let response = BluFiFrame(
+            type: BluFiProtocol.typeValue(package: .data, subtype: .customData),
+            control: [.inputDirection],
+            sequence: 0,
+            data: [0xDE, 0xAD, 0xBE, 0xEF]
+        )
+        await transport.receive(try BluFiFrameCodec.encode(response))
+
+        let received = try await receiveTask.value
+        XCTAssertEqual(received, [0xDE, 0xAD, 0xBE, 0xEF])
+    }
 }

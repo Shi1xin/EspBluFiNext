@@ -105,7 +105,11 @@ final class BluFiScanner: NSObject, @preconcurrency CBCentralManagerDelegate {
         peripherals[id]
     }
 
-    func connect(to device: BluFiDiscoveredDevice) async throws -> BluFiClient {
+    func connect(
+        to device: BluFiDiscoveredDevice,
+        commandTimeout: Duration = .seconds(15),
+        packetLength: Int? = nil
+    ) async throws -> BluFiClient {
         guard let central else {
             throw BluFiGATTError.connectionFailed("Bluetooth central manager is unavailable")
         }
@@ -124,7 +128,11 @@ final class BluFiScanner: NSObject, @preconcurrency CBCentralManagerDelegate {
         do {
             try await transport.connect(using: central)
             try await transport.prepare()
-            return try await BluFiClient(transport: transport, packetLength: transport.packetLength)
+            return try await BluFiClient(
+                transport: transport,
+                packetLength: packetLength ?? transport.packetLength,
+                commandTimeout: commandTimeout
+            )
         } catch {
             if activeTransport === transport {
                 activeTransport = nil

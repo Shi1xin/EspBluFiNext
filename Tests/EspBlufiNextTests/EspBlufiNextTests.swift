@@ -7,6 +7,35 @@ final class EspBlufiNextTests: XCTestCase {
         XCTAssertTrue(true)
     }
 
+    func testPayloadCodecRoundTripsSupportedFormats() throws {
+        let binaryBytes: [UInt8] = [0x00, 0x2A, 0xDE, 0xAD, 0xBE, 0xEF]
+        for format in [BluFiPayloadFormat.hex, .base64] {
+            let encoded = BluFiPayloadCodec.encode(binaryBytes, format: format)
+            XCTAssertEqual(try BluFiPayloadCodec.decode(encoded, format: format), binaryBytes)
+        }
+
+        let utf8Bytes = Array("BluFi ✓".utf8)
+        let utf8Encoded = BluFiPayloadCodec.encode(utf8Bytes, format: .utf8)
+        XCTAssertEqual(try BluFiPayloadCodec.decode(utf8Encoded, format: .utf8), utf8Bytes)
+
+        XCTAssertEqual(
+            try BluFiPayloadCodec.decode("0xDE:AD-be,ef", format: .hex),
+            [0xDE, 0xAD, 0xBE, 0xEF]
+        )
+    }
+
+    func testPayloadCodecRejectsMalformedPayloads() {
+        XCTAssertThrowsError(try BluFiPayloadCodec.decode("ABC", format: .hex)) { error in
+            XCTAssertEqual(error as? BluFiPayloadCodecError, .oddHexLength)
+        }
+        XCTAssertThrowsError(try BluFiPayloadCodec.decode("GG", format: .hex)) { error in
+            XCTAssertEqual(error as? BluFiPayloadCodecError, .invalidHexCharacter("G"))
+        }
+        XCTAssertThrowsError(try BluFiPayloadCodec.decode("not base64", format: .base64)) { error in
+            XCTAssertEqual(error as? BluFiPayloadCodecError, .invalidBase64)
+        }
+    }
+
     func testDiagnosticsPersistRedactedStructuredEventsAndSessionHistory() {
         let suiteName = "EspBluFiNext.tests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
@@ -34,5 +63,30 @@ final class EspBlufiNextTests: XCTestCase {
         XCTAssertEqual(reloaded.sessions.first?.id, sessionID)
         XCTAssertEqual(reloaded.sessions.first?.outcome, .disconnected)
         XCTAssertEqual(reloaded.sessions.first?.eventCount, 1)
+    }
+
+    func testDiagnosticExportContainsRedactionPolicyAndOmitsCredentials() throws {
+        let suiteName = "EspBluFiNext.export-tests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        let device = BluFiDiscoveredDevice(
+            id: UUID(uuidString: "98A316CD-05AC-4F00-8000-000000000001")!,
+            name: "xiaozhi",
+            rssi: -48,
+            isConnectable: true
+        )
+        let store = BluFiDiagnosticsStore(defaults: defaults)
+        let sessionID = store.beginSession(for: device)
+        store.record(
+            category: .provisioning,
+            title: "Station provisioning started",
+            detail: "SSID provided; password omitted",
+            sessionID: sessionID,
+            deviceID: device.id
+        )
+
+        let export = String(data: try store.exportData(), encoding: .utf8)!
+        XCTAssertTrue(export.contains("redactionPolicy"))
+        XCTAssertTrue(export.contains("password omitted"))
+        XCTAssertFalse(export.contains("secret-password"))
     }
 }

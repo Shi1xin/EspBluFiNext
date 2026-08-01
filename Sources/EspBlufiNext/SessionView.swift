@@ -84,6 +84,15 @@ private struct SessionDetailView: View {
                 .disabled(!session.phase.acceptsCommands)
             }
 
+            Section("Console") {
+                NavigationLink {
+                    CustomDataConsoleView()
+                } label: {
+                    Label("Send and Receive Custom Data", systemImage: "terminal")
+                }
+                .disabled(!session.phase.acceptsCommands)
+            }
+
             if !session.wifiNetworks.isEmpty {
                 DeviceWiFiScanSection(networks: session.wifiNetworks)
             }
@@ -113,7 +122,7 @@ private struct SessionStatusSection: View {
                 if session.phase.isBusy {
                     ProgressView()
                 }
-                Text(session.phase.title)
+                Text(session.phase.title.appLocalizedKey)
                     .font(.headline)
             }
 
@@ -147,10 +156,9 @@ private struct SessionDeviceSection: View {
                 LabeledContent("BluFi Version", value: "\(version.major).\(version.minor)")
             }
 
-            LabeledContent(
-                "Security",
-                value: session.securityVersion.map { "V\($0.rawValue)" } ?? "Not negotiated"
-            )
+            LabeledContent("Security") {
+                Text((session.securityVersion.map { "V\($0.rawValue)" } ?? "Not negotiated").appLocalizedKey)
+            }
         }
     }
 }
@@ -190,8 +198,12 @@ private struct WiFiStatusSection: View {
 
     var body: some View {
         Section("Wi-Fi Status") {
-            LabeledContent("Station", value: status.stationState.label)
-            LabeledContent("IP Address", value: status.hasIP ? "Available" : "Unavailable")
+            LabeledContent("Station") {
+                Text(status.stationState.label.appLocalizedKey)
+            }
+            LabeledContent("IP Address") {
+                Text((status.hasIP ? "Available" : "Unavailable").appLocalizedKey)
+            }
             if let ssid = status.stationSSID {
                 LabeledContent("SSID", value: ssid)
             }

@@ -7,6 +7,7 @@ struct DeviceListView: View {
     @Environment(BluFiScanner.self) private var scanner
     @Environment(BluFiSessionController.self) private var session
     @Environment(BluFiDiagnosticsStore.self) private var diagnostics
+    @Environment(AppSettingsStore.self) private var settings
 
     var body: some View {
         NavigationStack {
@@ -22,6 +23,14 @@ struct DeviceListView: View {
                         .disabled(!scanner.bluetoothState.canScan)
                         .buttonStyle(.glassProminent)
                     }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        NavigationLink {
+                            SettingsView()
+                        } label: {
+                            Image(systemName: "gearshape")
+                        }
+                        .accessibilityLabel("Settings")
+                    }
                 }
         }
     }
@@ -33,7 +42,7 @@ struct DeviceListView: View {
                 Label("No BluFi Devices", systemImage: "dot.radiowaves.left.and.right")
             } description: {
                 VStack(spacing: 8) {
-                    Text(scanner.emptyStateMessage)
+                    Text(scanner.emptyStateMessage.appLocalizedKey)
                     if scanner.isScanning {
                         ProgressView("Scanning")
                     }
@@ -83,13 +92,19 @@ struct DeviceListView: View {
     }
 
     private func toggleScanning() {
+        scanner.namePrefix = settings.namePrefix
         scanner.toggleScanning(diagnostics: diagnostics)
     }
 
     private func connect(to device: BluFiDiscoveredDevice) {
         coordinator.showSession()
         Task {
-            await session.connect(to: device, using: scanner, diagnostics: diagnostics)
+            await session.connect(
+                to: device,
+                using: scanner,
+                settings: settings,
+                diagnostics: diagnostics
+            )
         }
     }
 }
@@ -163,4 +178,5 @@ private struct DeviceRow: View {
         .environment(BluFiSessionController())
         .environment(AppCoordinator())
         .environment(BluFiDiagnosticsStore.preview())
+        .environment(AppSettingsStore())
 }
