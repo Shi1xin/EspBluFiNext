@@ -9,16 +9,16 @@ to describe compatibility.
 Use this statement in the README, About screen, release page, and product
 description:
 
-> EspBluFiNext is an independent iOS diagnostic client for Espressif
-> BluFi-compatible ESP32 devices. It is not affiliated with, sponsored by, or
-> endorsed by Espressif Systems (Shanghai) Co., Ltd. “ESP32” and “BluFi” are
-> used only to describe compatibility.
+> EspBluFiNext is a modern native iOS diagnostic client for Espressif
+> BluFi-compatible ESP32 devices. It is an independent project and is not
+> affiliated with, sponsored by, or endorsed by Espressif Systems (Shanghai)
+> Co., Ltd. “ESP32” and “BluFi” are used only to describe compatibility.
 
 Chinese:
 
-> EspBluFiNext 是面向 Espressif BluFi 兼容 ESP32 设备的独立 iOS 调试客户
-> 端，与 Espressif Systems (Shanghai) Co., Ltd. 无隶属、赞助或背书关系。
-> “ESP32”和“BluFi”仅用于描述兼容性。
+> EspBluFiNext 是面向 Espressif BluFi 兼容 ESP32 设备的现代原生 iOS 调试
+> 客户端。项目与 Espressif Systems (Shanghai) Co., Ltd. 无隶属、赞助或背书
+> 关系。“ESP32”和“BluFi”仅用于描述兼容性。
 
 Compatibility descriptions such as “for ESP BluFi-compatible devices” and
 “tested with ESP32-S3” are appropriate. Keep “official”, “endorsed”, and
@@ -41,10 +41,11 @@ use: <https://www.espressif.com/en/about-espressif/logo-guidelines>.
 ## Product names
 
 `EspBluFiNext` is the project and app name. Public descriptions should keep
-the independent-project statement adjacent to the name. Prefer:
+the modern native iOS positioning first, with the independent-project statement
+adjacent to the name. Prefer:
 
-- `EspBluFiNext — independent BluFi diagnostics for ESP32 devices`
-- `An iOS diagnostic client for Espressif BluFi-compatible ESP32 devices`
+- `EspBluFiNext — modern BluFi diagnostics for ESP32 devices`
+- `A modern native iOS diagnostic client for Espressif BluFi-compatible ESP32 devices`
 
 Avoid:
 

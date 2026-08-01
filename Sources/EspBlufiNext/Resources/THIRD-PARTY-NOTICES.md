@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-EspBluFiNext is an independent iOS diagnostic client for Espressif
+EspBluFiNext is a modern native iOS diagnostic client for Espressif
 BluFi-compatible ESP32 devices. This file records licenses and provenance for
 third-party material used by the project or consulted for protocol
 interoperability.

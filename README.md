@@ -1,6 +1,6 @@
 # EspBluFiNext
 
-EspBluFiNext is an independent native iOS 26 diagnostic client for ESP32 devices that support Espressif's BluFi protocol. It provides Bluetooth Low Energy discovery, connection, provisioning, status inspection, and diagnostic tools.
+EspBluFiNext is a modern native iOS 26 diagnostic client for ESP32 devices that support Espressif's [BluFi protocol](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/ble/blufi.html). It provides [Bluetooth Low Energy](https://developer.apple.com/documentation/corebluetooth) discovery, connection, provisioning, status inspection, and diagnostic tools.
 
 [简体中文](README.zh-CN.md)
 
@@ -41,7 +41,7 @@ BluFiKit (frames, CRC, fragmentation, security, provisioning, fake transport)
 - `scripts/archive-ios.sh`: Release archive.
 - `scripts/export-ios.sh`: signed IPA export.
 
-Protocol behavior lives in BluFiKit, CoreBluetooth behavior in the transport layer, and UI state transitions in the app layer. Generated Xcode projects and local signing files stay outside source control.
+Protocol behavior lives in BluFiKit, [Core Bluetooth](https://developer.apple.com/documentation/corebluetooth) behavior in the transport layer, and [SwiftUI](https://developer.apple.com/documentation/swiftui) state transitions in the app layer. Generated Xcode projects and local signing files stay outside source control.
 
 ## Features
 
@@ -57,17 +57,17 @@ Protocol behavior lives in BluFiKit, CoreBluetooth behavior in the transport lay
 
 ## Requirements
 
-- macOS with Xcode 26 or later, including the iOS 26 SDK and Swift 6.
-- XcodeGen (`brew install xcodegen`).
+- macOS with [Xcode 26 or later](https://developer.apple.com/xcode/), including the iOS 26 SDK and [Swift 6](https://www.swift.org/).
+- [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`).
 - A physical iPhone or iPad for Bluetooth and ESP testing.
-- An Apple Development team, certificate, registered bundle ID, and provisioning profile for physical-device builds and sideloading.
-- An ESP BluFi device running firmware compatible with the selected test case.
+- An [Apple Developer](https://developer.apple.com/account/) team, certificate, registered bundle ID, and provisioning profile for physical-device builds and sideloading.
+- An [ESP BluFi](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/ble/blufi.html) device running firmware compatible with the selected test case.
 
 The simulator can validate UI, navigation, state handling, diagnostics, localization, and package tests. CoreBluetooth scanning, GATT traffic, security negotiation, provisioning, and firmware compatibility require a real Apple device and ESP hardware.
 
 ## Toolchain setup
 
-Install Xcode 26 or later. When multiple Xcode versions are installed, select the bundle you want to use. For the standard installation path:
+Install [Xcode 26 or later](https://developer.apple.com/xcode/). When multiple Xcode versions are installed, select the bundle you want to use. For the standard installation path:
 
 ```bash
 sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
@@ -80,7 +80,7 @@ xcodebuild -version
 xcrun --sdk iphonesimulator --show-sdk-version
 ```
 
-The build scripts use the active developer directory selected by `xcode-select`. You can also provide `DEVELOPER_DIR` explicitly for another Xcode installation.
+The build scripts use the active developer directory selected by `xcode-select`. You can also provide `DEVELOPER_DIR` explicitly for another Xcode installation. [Homebrew](https://brew.sh/) provides the package manager used for XcodeGen.
 
 ## Local signing configuration
 
@@ -91,7 +91,7 @@ cp Config/Local.xcconfig.example Config/Local.xcconfig
 # Edit Config/Local.xcconfig and set DEVELOPMENT_TEAM to your Team ID.
 ```
 
-The app uses bundle identifier `com.espblufi.next` and the Wi-Fi information entitlement for reading the current iPhone Wi-Fi SSID. The Apple Developer account must be able to sign that bundle ID and profile.
+The app uses bundle identifier `com.espblufi.next` and [NEHotspotNetwork](https://developer.apple.com/documentation/networkextension/nehotspotnetwork) to read the current iPhone Wi-Fi SSID. The [Apple Developer account](https://developer.apple.com/account/) must be able to sign that bundle ID and profile.
 
 ## Simulator build
 
@@ -165,7 +165,9 @@ CODE_SIGNING_REQUIRED=NO \
 ./scripts/archive-ios.sh
 ```
 
-The resulting archive requires a valid user signature before installation. TestFlight and App Store Connect are outside the current release workflow.
+The resulting archive requires a valid user signature before installation. A development-signed IPA is available from the [latest GitHub release](https://github.com/Shi1xin/EspBluFiNext/releases/latest) when a release has been published.
+
+For users without their own Apple Developer signing setup, a sideloading tool such as [Sideloadly](https://sideloadly.io/) can be used to install an IPA. Follow the selected tool's current instructions for Apple ID, signing, device, and expiration limits. TestFlight and App Store Connect are outside the current release workflow.
 
 ## Tests and verification
 
@@ -198,4 +200,11 @@ Use a real iPhone or iPad with ESP hardware to verify scanning, connection, GATT
 - EspBluFiNext is an independent project and is not affiliated with, sponsored by, or endorsed by Espressif Systems (Shanghai) Co., Ltd. `ESP32` and `BluFi` are used only to describe compatibility.
 - The app icon, screenshots, and marketing artwork use original assets. The [branding guide](docs/BRANDING.md) defines approved wording and asset rules.
 
-Protocol reference: [Espressif BluFi documentation](https://docs.espressif.com/projects/esp-idf/en/stable/esp32c2/api-guides/ble/blufi.html). Security background: [ESP-IDF BluFi advisory](https://github.com/espressif/esp-idf/security/advisories/GHSA-9w88-r2vm-qfc4).
+## References and tools
+
+- Protocol: [Espressif BluFi documentation](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/ble/blufi.html) and the [ESP-IDF BluFi example](https://github.com/espressif/esp-idf/tree/release/v5.5/examples/bluetooth/blufi).
+- Apple platform: [Core Bluetooth](https://developer.apple.com/documentation/corebluetooth), [SwiftUI](https://developer.apple.com/documentation/swiftui), and [NEHotspotNetwork](https://developer.apple.com/documentation/networkextension/nehotspotnetwork).
+- Build tooling: [Xcode](https://developer.apple.com/xcode/), [Swift](https://www.swift.org/), [Swift Package Manager](https://www.swift.org/documentation/package-manager/), [XcodeGen](https://github.com/yonaskolb/XcodeGen), and [Homebrew](https://brew.sh/).
+- Dependency: [BigInt](https://github.com/attaswift/BigInt), used by BluFiKit for the BluFi security implementation.
+- Distribution: [GitHub Releases](https://github.com/Shi1xin/EspBluFiNext/releases/latest) and [Sideloadly](https://sideloadly.io/).
+- Security background: [ESP-IDF BluFi security advisory](https://github.com/espressif/esp-idf/security/advisories/GHSA-9w88-r2vm-qfc4).

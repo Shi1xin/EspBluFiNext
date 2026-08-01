@@ -102,7 +102,7 @@
 "BluFi service" = "BluFi 服务";
 "Open Source Licenses" = "开源许可证";
 "License and attribution information for this app's bundled dependencies." = "此应用所包含依赖的许可证与来源信息。";
-"EspBluFiNext is an independent iOS diagnostic client for Espressif BluFi-compatible ESP32 devices. It is not affiliated with, sponsored by, or endorsed by Espressif Systems (Shanghai) Co., Ltd. \"ESP32\" and \"BluFi\" are used only to describe compatibility." = "EspBluFiNext 是面向 Espressif BluFi 兼容 ESP32 设备的独立 iOS 调试客户端，与 Espressif Systems (Shanghai) Co., Ltd. 无隶属、赞助或背书关系。\"ESP32\" 和 \"BluFi\" 仅用于描述兼容性。";
+"EspBluFiNext is a modern native iOS diagnostic client for Espressif BluFi-compatible ESP32 devices. It is an independent project and is not affiliated with, sponsored by, or endorsed by Espressif Systems (Shanghai) Co., Ltd. \"ESP32\" and \"BluFi\" are used only to describe compatibility." = "EspBluFiNext 是面向 Espressif BluFi 兼容 ESP32 设备的现代原生 iOS 调试客户端。项目与 Espressif Systems (Shanghai) Co., Ltd. 无隶属、赞助或背书关系。\"ESP32\" 和 \"BluFi\" 仅用于描述兼容性。";
 "Third-party notices are also included in the source repository and in this app bundle." = "第三方声明同时包含在源代码仓库和此应用包中。";
 "Third-party notices are unavailable in this build. See the source repository for the complete notice file." = "此构建未包含第三方声明，请在源代码仓库中查看完整声明文件。";
 "5 seconds" = "5 秒";

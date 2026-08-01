@@ -94,7 +94,7 @@ struct SettingsView: View {
                     Label("Open Source Licenses", systemImage: "doc.text")
                 }
 
-                Text("EspBluFiNext is an independent iOS diagnostic client for Espressif BluFi-compatible ESP32 devices. It is not affiliated with, sponsored by, or endorsed by Espressif Systems (Shanghai) Co., Ltd. \"ESP32\" and \"BluFi\" are used only to describe compatibility.")
+                Text("EspBluFiNext is a modern native iOS diagnostic client for Espressif BluFi-compatible ESP32 devices. It is an independent project and is not affiliated with, sponsored by, or endorsed by Espressif Systems (Shanghai) Co., Ltd. \"ESP32\" and \"BluFi\" are used only to describe compatibility.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } header: {

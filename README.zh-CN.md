@@ -1,6 +1,6 @@
 # EspBluFiNext
 
-EspBluFiNext 是面向 Espressif BluFi 兼容 ESP32 设备的独立原生 iOS 26 调试客户端，提供低功耗蓝牙设备发现、连接、配网、状态查看和诊断能力。
+EspBluFiNext 是面向 Espressif [BluFi 协议](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/ble/blufi.html)兼容 ESP32 设备的现代原生 iOS 26 调试客户端，提供[低功耗蓝牙](https://developer.apple.com/documentation/corebluetooth)设备发现、连接、配网、状态查看和诊断能力。
 
 [English](README.md)
 
@@ -41,7 +41,7 @@ BluFiKit（帧、CRC、分片、安全、配网、Fake Transport）
 - `scripts/archive-ios.sh`：生成 Release 归档。
 - `scripts/export-ios.sh`：导出签名 IPA。
 
-协议行为位于 BluFiKit，CoreBluetooth 行为位于传输层，界面状态转换位于 App 层。生成的 Xcode 工程和本地签名配置不进入版本控制。
+协议行为位于 BluFiKit，[Core Bluetooth](https://developer.apple.com/documentation/corebluetooth) 行为位于传输层，[SwiftUI](https://developer.apple.com/documentation/swiftui) 界面状态转换位于 App 层。生成的 Xcode 工程和本地签名配置不进入版本控制。
 
 ## 主要功能
 
@@ -57,17 +57,17 @@ BluFiKit（帧、CRC、分片、安全、配网、Fake Transport）
 
 ## 环境要求
 
-- macOS，以及包含 iOS 26 SDK 和 Swift 6 的 Xcode 26 或更高版本。
-- XcodeGen：`brew install xcodegen`。
+- macOS，以及包含 iOS 26 SDK 和 [Swift 6](https://www.swift.org/) 的 [Xcode 26 或更高版本](https://developer.apple.com/xcode/)。
+- [XcodeGen](https://github.com/yonaskolb/XcodeGen)：`brew install xcodegen`。
 - 用于蓝牙和 ESP 测试的真实 iPhone 或 iPad。
-- 用于真机构建和侧载的 Apple Development Team、证书、已注册 Bundle ID 和 Provisioning Profile。
-- 与测试场景兼容的 ESP BluFi 固件。
+- 用于真机构建和侧载的 [Apple Developer](https://developer.apple.com/account/) Team、证书、已注册 Bundle ID 和 Provisioning Profile。
+- 与测试场景兼容的 [ESP BluFi](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/ble/blufi.html) 固件。
 
 模拟器可验证界面、导航、状态处理、诊断、本地化和包测试。CoreBluetooth 扫描、GATT 通信、安全协商、配网和固件兼容性需要真实 Apple 设备与 ESP 硬件。
 
 ## 工具链配置
 
-安装 Xcode 26 或更高版本。电脑中存在多个 Xcode 版本时，选择需要使用的版本。标准安装路径示例：
+安装 [Xcode 26 或更高版本](https://developer.apple.com/xcode/)。电脑中存在多个 Xcode 版本时，选择需要使用的版本。标准安装路径示例：
 
 ```bash
 sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
@@ -80,7 +80,7 @@ xcodebuild -version
 xcrun --sdk iphonesimulator --show-sdk-version
 ```
 
-构建脚本默认使用 `xcode-select` 选中的开发者目录，也支持通过 `DEVELOPER_DIR` 指定其他 Xcode 安装。
+构建脚本默认使用 `xcode-select` 选中的开发者目录，也支持通过 `DEVELOPER_DIR` 指定其他 Xcode 安装。[Homebrew](https://brew.sh/) 用于安装 XcodeGen。
 
 ## 本地签名配置
 
@@ -91,7 +91,7 @@ cp Config/Local.xcconfig.example Config/Local.xcconfig
 # 编辑 Config/Local.xcconfig，填写 DEVELOPMENT_TEAM。
 ```
 
-App 使用 Bundle ID `com.espblufi.next`，并使用 Wi-Fi 信息权限读取当前 iPhone Wi-Fi SSID。Apple Developer 账号需要能够为该 Bundle ID 和描述文件签名。
+App 使用 Bundle ID `com.espblufi.next`，并使用 [NEHotspotNetwork](https://developer.apple.com/documentation/networkextension/nehotspotnetwork) 读取当前 iPhone Wi-Fi SSID。[Apple Developer 账号](https://developer.apple.com/account/)需要能够为该 Bundle ID 和描述文件签名。
 
 ## 模拟器构建
 
@@ -165,7 +165,9 @@ CODE_SIGNING_REQUIRED=NO \
 ./scripts/archive-ios.sh
 ```
 
-生成的归档需要有效签名后才能安装。TestFlight 和 App Store Connect 不在当前发布流程内。
+生成的归档需要有效签名后才能安装。发布版本会在 [GitHub Releases](https://github.com/Shi1xin/EspBluFiNext/releases/latest) 提供开发签名 IPA。
+
+没有自己的 Apple Developer 签名配置时，可以考虑使用 [Sideloadly](https://sideloadly.io/) 等侧载工具安装 IPA。Apple ID、签名、设备数量和有效期限制以所选工具当前说明为准。TestFlight 和 App Store Connect 不在当前发布流程内。
 
 ## 测试与验证
 
@@ -198,4 +200,11 @@ xcodebuild \
 - EspBluFiNext 是独立项目，与 Espressif Systems (Shanghai) Co., Ltd. 无隶属、赞助或背书关系。`ESP32` 和 `BluFi` 仅用于描述兼容性。
 - App 图标、截图和宣传素材使用自有资产；[品牌规范](docs/BRANDING.md) 说明了可用措辞和素材规则。
 
-协议参考：[乐鑫 BluFi 文档](https://docs.espressif.com/projects/esp-idf/en/stable/esp32c2/api-guides/ble/blufi.html)。安全背景：[ESP-IDF BluFi 安全公告](https://github.com/espressif/esp-idf/security/advisories/GHSA-9w88-r2vm-qfc4)。
+## 参考资料与工具
+
+- 协议：[乐鑫 BluFi 文档](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/ble/blufi.html)和 [ESP-IDF BluFi 示例](https://github.com/espressif/esp-idf/tree/release/v5.5/examples/bluetooth/blufi)。
+- Apple 平台：[Core Bluetooth](https://developer.apple.com/documentation/corebluetooth)、[SwiftUI](https://developer.apple.com/documentation/swiftui) 和 [NEHotspotNetwork](https://developer.apple.com/documentation/networkextension/nehotspotnetwork)。
+- 构建工具：[Xcode](https://developer.apple.com/xcode/)、[Swift](https://www.swift.org/)、[Swift Package Manager](https://www.swift.org/documentation/package-manager/)、[XcodeGen](https://github.com/yonaskolb/XcodeGen) 和 [Homebrew](https://brew.sh/)。
+- 依赖：[BigInt](https://github.com/attaswift/BigInt)，BluFiKit 使用它实现 BluFi 安全逻辑。
+- 发布与侧载：[GitHub Releases](https://github.com/Shi1xin/EspBluFiNext/releases/latest) 和 [Sideloadly](https://sideloadly.io/)。
+- 安全背景：[ESP-IDF BluFi 安全公告](https://github.com/espressif/esp-idf/security/advisories/GHSA-9w88-r2vm-qfc4)。

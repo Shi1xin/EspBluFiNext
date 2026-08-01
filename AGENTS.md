@@ -2,7 +2,7 @@
 
 ## Scope
 
-EspBlufiNext is a native iOS 26 diagnostic client for ESP BluFi devices. The app uses SwiftUI for the interface, CoreBluetooth for the BLE link, and BluFiKit for transport-independent protocol and security behavior.
+EspBlufiNext is a modern native iOS 26 diagnostic client for ESP BluFi devices. The app uses SwiftUI for the interface, CoreBluetooth for the BLE link, and BluFiKit for transport-independent protocol and security behavior.
 
 The app is distributed from GitHub source code. Each user supplies their own Apple Development team, signing certificate, bundle ID registration, and provisioning profile for a physical-device build or sideloaded IPA.
 
