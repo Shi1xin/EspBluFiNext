@@ -100,33 +100,15 @@ private struct SessionDetailView: View {
             SessionDashboardHeader(device: device)
 
             SessionDeviceSection(device: device)
-            SessionCommandsSection()
+            SessionCommandsSection(
+                device: device,
+                stationSSID: $stationSSID,
+                stationPassword: $stationPassword,
+                sendStationConfiguration: sendStationConfiguration
+            )
 
             if let status = session.wifiStatus {
                 WiFiStatusSection(status: status)
-            }
-
-            Section("Provisioning") {
-                NavigationLink {
-                    ProvisioningView(
-                        ssid: $stationSSID,
-                        password: $stationPassword,
-                        device: device,
-                        send: sendStationConfiguration
-                    )
-                } label: {
-                    Label("Provision Station Wi-Fi", systemImage: "paperplane")
-                }
-                .disabled(!session.phase.acceptsCommands)
-            }
-
-            Section("Console") {
-                NavigationLink {
-                    CustomDataConsoleView()
-                } label: {
-                    Label("Send and Receive Custom Data", systemImage: "terminal")
-                }
-                .disabled(!session.phase.acceptsCommands)
             }
 
             if !session.wifiNetworks.isEmpty {
@@ -175,6 +157,11 @@ private struct SessionCommandsSection: View {
     @Environment(BluFiSessionController.self) private var session
     @Environment(BluFiDiagnosticsStore.self) private var diagnostics
 
+    let device: BluFiDiscoveredDevice
+    @Binding var stationSSID: String
+    @Binding var stationPassword: String
+    let sendStationConfiguration: () -> Void
+
     var body: some View {
         Section("Commands") {
             Button("Establish Secure Session", systemImage: "lock.shield", action: establishSecureSession)
@@ -183,8 +170,24 @@ private struct SessionCommandsSection: View {
             Button("Read Wi-Fi Status", systemImage: "wifi", action: readWiFiStatus)
                 .disabled(!session.phase.acceptsCommands)
 
-            Button("Scan Wi-Fi from Device", systemImage: "wifi.magnifyingglass", action: scanWiFi)
-                .disabled(!session.phase.acceptsCommands)
+            NavigationLink {
+                ProvisioningView(
+                    ssid: $stationSSID,
+                    password: $stationPassword,
+                    device: device,
+                    send: sendStationConfiguration
+                )
+            } label: {
+                Label("Provision Station Wi-Fi", systemImage: "paperplane")
+            }
+            .disabled(!session.phase.acceptsCommands)
+
+            NavigationLink {
+                CustomDataConsoleView()
+            } label: {
+                Label("Send and Receive Custom Data", systemImage: "terminal")
+            }
+            .disabled(!session.phase.acceptsCommands)
         }
     }
 
@@ -194,10 +197,6 @@ private struct SessionCommandsSection: View {
 
     private func readWiFiStatus() {
         Task { await session.refreshWiFiStatus(diagnostics: diagnostics) }
-    }
-
-    private func scanWiFi() {
-        Task { await session.scanDeviceWiFi(diagnostics: diagnostics) }
     }
 }
 
