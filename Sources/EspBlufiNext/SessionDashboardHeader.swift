@@ -41,6 +41,20 @@ struct SessionDashboardHeader: View {
             Divider()
 
             statusMetricLayout
+
+            if let lastError = session.lastError {
+                Text(lastError)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if case .stationConfigurationSent = session.phase {
+                Text("The device accepted the Station configuration without a status report. Re-enter provisioning mode and reconnect to query its current Wi-Fi state.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 

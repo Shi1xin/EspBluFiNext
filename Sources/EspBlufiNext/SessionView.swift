@@ -99,7 +99,6 @@ private struct SessionDetailView: View {
         Form {
             SessionDashboardHeader(device: device)
 
-            SessionStatusSection()
             SessionDeviceSection(device: device)
             SessionCommandsSection()
 
@@ -145,34 +144,6 @@ private struct SessionDetailView: View {
             )
             if didProvision {
                 stationPassword = ""
-            }
-        }
-    }
-}
-
-private struct SessionStatusSection: View {
-    @Environment(BluFiSessionController.self) private var session
-
-    var body: some View {
-        Section {
-            HStack(spacing: 10) {
-                if session.phase.isBusy {
-                    ProgressView()
-                }
-                Text(session.phase.title.appLocalizedKey)
-                    .font(.headline)
-            }
-
-            if let lastError = session.lastError {
-                Text(lastError)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
-            }
-
-            if case .stationConfigurationSent = session.phase {
-                Text("The device accepted the Station configuration without a status report. Re-enter provisioning mode and reconnect to query its current Wi-Fi state.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
             }
         }
     }
