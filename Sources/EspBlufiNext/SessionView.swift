@@ -164,7 +164,6 @@ private struct SessionDetailView: View {
 }
 
 private struct SessionDeviceSection: View {
-    @Environment(BluFiSessionController.self) private var session
     let device: BluFiDiscoveredDevice
     let onCopy: () -> Void
 
@@ -173,10 +172,6 @@ private struct SessionDeviceSection: View {
             DeviceNameView(name: device.name, onCopy: onCopy)
             DeviceIdentifierView(identifier: device.id, onCopy: onCopy)
             LabeledContent("RSSI", value: "\(device.rssi) dBm")
-
-            LabeledContent("Security") {
-                Text((session.securityVersion.map { "V\($0.rawValue)" } ?? "Not negotiated").appLocalizedKey)
-            }
         }
     }
 }
