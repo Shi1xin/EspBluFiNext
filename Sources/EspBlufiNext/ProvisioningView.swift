@@ -93,6 +93,10 @@ struct ProvisioningView: View {
                     .disabled(!session.phase.acceptsCommands || ssid.isEmpty)
             }
 
+            if let status = session.wifiStatus {
+                WiFiStatusSection(status: status)
+            }
+
             if session.phase.isBusy {
                 Section {
                     HStack(spacing: 10) {

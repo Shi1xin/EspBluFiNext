@@ -10,7 +10,7 @@ struct SessionView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if session.isConnected, let device = session.connectedDevice {
+                if (session.isConnected || session.hasSessionSnapshot), let device = session.connectedDevice {
                     SessionDetailView(device: device)
                 } else if session.phase.isBusy {
                     ContentUnavailableView(
@@ -172,14 +172,26 @@ private struct SessionCommandsSection: View {
 
     var body: some View {
         Section("Commands") {
-            Button("Establish Secure Session", systemImage: "lock.shield", action: establishSecureSession)
-                .disabled(!session.phase.acceptsCommands || session.deviceVersion == nil)
+            Button(action: establishSecureSession) {
+                Label("Establish Secure Session", systemImage: "lock.shield")
+                    .foregroundStyle(secureSessionTint)
+            }
+            .tint(secureSessionTint)
+            .disabled(!canEstablishSecureSession)
 
-            Button("Read Wi-Fi Status", systemImage: "wifi", action: readWiFiStatus)
-                .disabled(!session.phase.acceptsCommands)
+            Button(action: readWiFiStatus) {
+                Label("Read Wi-Fi Status", systemImage: "arrow.clockwise.circle")
+                    .foregroundStyle(commandTint)
+            }
+            .tint(commandTint)
+            .disabled(!canExecuteCommand)
 
-            Button("Scan Wi-Fi from Device", systemImage: "wifi", action: scanDeviceWiFi)
-                .disabled(!session.phase.acceptsCommands)
+            Button(action: scanDeviceWiFi) {
+                Label("Scan Wi-Fi from Device", systemImage: "wifi")
+                    .foregroundStyle(commandTint)
+            }
+            .tint(commandTint)
+            .disabled(!canExecuteCommand)
 
             NavigationLink {
                 ProvisioningView(
@@ -190,18 +202,36 @@ private struct SessionCommandsSection: View {
                 )
             } label: {
                 Label("Provision Station Wi-Fi", systemImage: "paperplane")
-                    .foregroundStyle(.tint)
+                    .foregroundStyle(commandTint)
             }
-            .disabled(!session.phase.acceptsCommands)
+            .tint(commandTint)
+            .disabled(!canExecuteCommand)
 
             NavigationLink {
                 CustomDataConsoleView()
             } label: {
                 Label("Send and Receive Custom Data", systemImage: "terminal")
-                    .foregroundStyle(.tint)
+                    .foregroundStyle(commandTint)
             }
-            .disabled(!session.phase.acceptsCommands)
+            .tint(commandTint)
+            .disabled(!canExecuteCommand)
         }
+    }
+
+    private var canExecuteCommand: Bool {
+        session.phase.acceptsCommands
+    }
+
+    private var canEstablishSecureSession: Bool {
+        canExecuteCommand && session.deviceVersion != nil
+    }
+
+    private var commandTint: Color {
+        canExecuteCommand ? .accentColor : .accentColor.opacity(0.45)
+    }
+
+    private var secureSessionTint: Color {
+        canEstablishSecureSession ? .accentColor : .accentColor.opacity(0.45)
     }
 
     private func establishSecureSession() {
@@ -213,37 +243,6 @@ private struct SessionCommandsSection: View {
     }
 }
 
-private struct WiFiStatusSection: View {
-    let status: BluFiWiFiStatus
-
-    var body: some View {
-        Section("Wi-Fi Status") {
-            LabeledContent("Station") {
-                Text(status.stationState.label.appLocalizedKey)
-            }
-            LabeledContent("IP Address") {
-                Text((status.hasIP ? "Available" : "Unavailable").appLocalizedKey)
-            }
-            if let ssid = status.stationSSID {
-                LabeledContent("SSID", value: ssid)
-            }
-            if let bssid = status.stationBSSID {
-                LabeledContent("BSSID", value: bssid)
-                    .font(.caption.monospaced())
-            }
-            if let rssi = status.stationRSSI {
-                LabeledContent("RSSI", value: "\(rssi) dBm")
-            }
-            if let retryCount = status.stationMaximumRetry {
-                LabeledContent("Maximum Retries", value: String(retryCount))
-            }
-            if let reason = status.failureReason {
-                LabeledContent("Failure Reason", value: String(reason))
-            }
-        }
-    }
-}
-
 private struct DeviceWiFiScanSection: View {
     let networks: [BluFiWiFiScanResult]
 
@@ -252,23 +251,6 @@ private struct DeviceWiFiScanSection: View {
             ForEach(networks) { network in
                 LabeledContent(network.ssid, value: "\(network.rssi) dBm")
             }
-        }
-    }
-}
-
-private extension BluFiStationConnectionState {
-    var label: String {
-        switch self {
-        case .connected:
-            "Connected"
-        case .failed:
-            "Failed"
-        case .connecting:
-            "Connecting"
-        case .noIP:
-            "No IP Address"
-        case let .unknown(value):
-            "Unknown (\(value))"
         }
     }
 }

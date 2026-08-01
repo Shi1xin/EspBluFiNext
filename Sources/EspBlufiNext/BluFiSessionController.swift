@@ -4,6 +4,7 @@ import Observation
 
 enum BluFiSessionPhase: Equatable {
     case idle
+    case disconnected
     case connecting
     case ready
     case securing
@@ -16,6 +17,8 @@ enum BluFiSessionPhase: Equatable {
         switch self {
         case .idle:
             "No Active Session"
+        case .disconnected:
+            "Disconnected"
         case .connecting:
             "Connecting"
         case .ready:
@@ -37,7 +40,7 @@ enum BluFiSessionPhase: Equatable {
         switch self {
         case .connecting, .securing, .working:
             true
-        case .idle, .ready, .secured, .stationConfigurationSent, .failed:
+        case .idle, .disconnected, .ready, .secured, .stationConfigurationSent, .failed:
             false
         }
     }
@@ -46,7 +49,7 @@ enum BluFiSessionPhase: Equatable {
         switch self {
         case .ready, .secured:
             true
-        case .idle, .connecting, .securing, .stationConfigurationSent, .working, .failed:
+        case .idle, .disconnected, .connecting, .securing, .stationConfigurationSent, .working, .failed:
             false
         }
     }
@@ -75,6 +78,10 @@ final class BluFiSessionController {
 
     var isConnected: Bool {
         client != nil && connectedDevice != nil && deviceVersion != nil
+    }
+
+    var hasSessionSnapshot: Bool {
+        connectedDevice != nil && deviceVersion != nil
     }
 
     var canReconnect: Bool {
@@ -400,17 +407,17 @@ final class BluFiSessionController {
                 configuration,
                 waitForStationStatus: true
             )
+            wifiStatus = status
             guard currentSessionID == sessionID else {
                 diagnostics.record(
                     category: .provisioning,
                     title: "Station configuration accepted",
-                    detail: "No station status report before the device closed BluFi",
+                    detail: status.map(statusSummary) ?? "No station status report before the device closed BluFi",
                     sessionID: sessionID,
                     deviceID: deviceID
                 )
                 return true
             }
-            wifiStatus = status
             phase = wifiStatus == nil ? .stationConfigurationSent : readyPhase
             record(
                 diagnostics,
@@ -615,7 +622,7 @@ final class BluFiSessionController {
         if let currentSessionID {
             diagnostics.finishSession(currentSessionID, outcome: .disconnected)
         }
-        reset()
+        reset(with: error, preserveSessionSnapshot: true)
     }
 
     private var readyPhase: BluFiSessionPhase {
@@ -626,17 +633,22 @@ final class BluFiSessionController {
         }
     }
 
-    private func reset(with error: (any Error)? = nil) {
+    private func reset(
+        with error: (any Error)? = nil,
+        preserveSessionSnapshot: Bool = false
+    ) {
         client = nil
         currentSessionID = nil
-        connectedDevice = nil
-        deviceVersion = nil
-        securityVersion = nil
-        wifiStatus = nil
-        wifiNetworks = []
-        customMessages = []
+        if !preserveSessionSnapshot {
+            connectedDevice = nil
+            deviceVersion = nil
+            securityVersion = nil
+            wifiStatus = nil
+            wifiNetworks = []
+            customMessages = []
+        }
         lastError = error?.localizedDescription
-        phase = error.map { .failed($0.localizedDescription) } ?? .idle
+        phase = error.map { .failed($0.localizedDescription) } ?? (preserveSessionSnapshot ? .disconnected : .idle)
     }
 
     private func record(

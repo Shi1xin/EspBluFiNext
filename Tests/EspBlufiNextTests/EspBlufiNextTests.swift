@@ -15,6 +15,12 @@ final class EspBlufiNextTests: XCTestCase {
         XCTAssertEqual(coordinator.selectedTab, .session)
     }
 
+    func testDisconnectedSessionPhaseKeepsCommandsDisabled() {
+        XCTAssertEqual(BluFiSessionPhase.disconnected.title, "Disconnected")
+        XCTAssertFalse(BluFiSessionPhase.disconnected.isBusy)
+        XCTAssertFalse(BluFiSessionPhase.disconnected.acceptsCommands)
+    }
+
     func testPayloadCodecRoundTripsSupportedFormats() throws {
         let binaryBytes: [UInt8] = [0x00, 0x2A, 0xDE, 0xAD, 0xBE, 0xEF]
         for format in [BluFiPayloadFormat.hex, .base64] {

@@ -130,7 +130,7 @@ struct SessionDashboardHeader: View {
             "lock.shield.fill"
         case .ready, .stationConfigurationSent:
             "checkmark.circle"
-        case .idle:
+        case .idle, .disconnected:
             "antenna.radiowaves.left.and.right.slash"
         }
     }
@@ -143,7 +143,7 @@ struct SessionDashboardHeader: View {
             .orange
         case .secured, .ready, .stationConfigurationSent:
             .green
-        case .idle:
+        case .idle, .disconnected:
             .secondary
         }
     }
