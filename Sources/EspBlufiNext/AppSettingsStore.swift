@@ -15,7 +15,7 @@ enum AppLanguage: String, CaseIterable, Codable, Identifiable, Sendable {
         case .english:
             "English"
         case .simplifiedChinese:
-            "简体中文"
+            "Simplified Chinese"
         }
     }
 

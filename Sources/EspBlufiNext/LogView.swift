@@ -189,7 +189,7 @@ private struct DiagnosticEventRow: View {
                     .foregroundStyle(.secondary)
 
                 if let detail = event.detail {
-                    Text(detail)
+                    Text(verbatim: detail)
                         .font(.footnote)
                         .foregroundStyle(event.severity == .error ? .red : .secondary)
                         .textSelection(.enabled)
@@ -247,8 +247,13 @@ private struct DiagnosticEventDetailView: View {
             }
 
             Section("Redacted Representation") {
-                Text(event.detail ?? "No additional details were captured.")
-                    .textSelection(.enabled)
+                if let detail = event.detail {
+                    Text(verbatim: detail)
+                        .textSelection(.enabled)
+                } else {
+                    Text("No additional details were captured.")
+                        .textSelection(.enabled)
+                }
             }
 
             Section("Persistent Log Policy") {
@@ -293,9 +298,27 @@ private struct SessionHistoryRow: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            Text("\(session.eventCount) event(s) · \(session.durationLabel)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            HStack(spacing: 4) {
+                Text("\(session.eventCount)")
+                Text("event(s)")
+                Text("·")
+                if let duration = session.duration {
+                    let seconds = max(0, Int(duration.components.seconds))
+                    if seconds < 60 {
+                        Text("\(seconds)")
+                        Text("s")
+                    } else {
+                        Text("\(seconds / 60)")
+                        Text("m")
+                        Text("\(seconds % 60)")
+                        Text("s")
+                    }
+                } else {
+                    Text("in progress")
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
     }
@@ -326,16 +349,6 @@ private extension BluFiSessionOutcome {
         case .cancelled:
             .orange
         }
-    }
-}
-
-private extension BluFiSessionRecord {
-    var durationLabel: String {
-        guard let duration else {
-            return "in progress"
-        }
-        let seconds = max(0, Int(duration.components.seconds))
-        return seconds < 60 ? "\(seconds)s" : "\(seconds / 60)m \(seconds % 60)s"
     }
 }
 

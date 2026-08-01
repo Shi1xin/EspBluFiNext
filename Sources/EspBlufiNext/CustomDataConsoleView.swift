@@ -11,13 +11,17 @@ struct CustomDataConsoleView: View {
 
     var body: some View {
         Form {
-            Section("Format") {
+            Section {
                 Picker("Payload format", selection: $format) {
                     ForEach(BluFiPayloadFormat.allCases) { format in
                         Text(format.title.appLocalizedKey).tag(format)
                     }
                 }
                 .pickerStyle(.segmented)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
+            } header: {
+                Text("Format")
             }
 
             Section {
@@ -27,7 +31,7 @@ struct CustomDataConsoleView: View {
                         .frame(minHeight: 120)
 
                     if outgoingText.isEmpty {
-                        Text(format.placeholder.appLocalizedKey)
+                        Text(verbatim: format.placeholder)
                             .foregroundStyle(.tertiary)
                             .padding(.top, 8)
                             .padding(.leading, 4)
@@ -36,7 +40,6 @@ struct CustomDataConsoleView: View {
                 }
 
                 Button("Send Custom Data", systemImage: "arrow.up.circle", action: send)
-                    .buttonStyle(.glassProminent)
                     .disabled(!session.phase.acceptsCommands || outgoingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             } header: {
                 Text("Send")
@@ -154,9 +157,15 @@ private struct ConsoleMessageRow: View {
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
-                Text((message.payload.isEmpty ? "<empty>" : message.payload).appLocalizedKey)
-                    .font(.body.monospaced())
-                    .textSelection(.enabled)
+                if message.payload.isEmpty {
+                    Text("<empty>".appLocalizedKey)
+                        .font(.body.monospaced())
+                        .textSelection(.enabled)
+                } else {
+                    Text(verbatim: message.payload)
+                        .font(.body.monospaced())
+                        .textSelection(.enabled)
+                }
             }
 
             Button("Copy", systemImage: "doc.on.doc") {

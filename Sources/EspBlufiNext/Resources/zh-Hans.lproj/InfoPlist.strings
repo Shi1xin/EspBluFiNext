@@ -1,0 +1,2 @@
+"NSBluetoothAlwaysUsageDescription" = "EspBluFi 使用蓝牙发现并连接 ESP BluFi 设备。";
+"NSLocationWhenInUseUsageDescription" = "EspBluFi 使用精确定位读取当前 iPhone Wi‑Fi 网络名称。";
