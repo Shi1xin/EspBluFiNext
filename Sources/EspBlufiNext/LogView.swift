@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 
 struct LogView: View {
+    @Environment(AppCoordinator.self) private var coordinator
     @Environment(BluFiDiagnosticsStore.self) private var diagnostics
 
     @State private var filter: BluFiLogFilter = .all
@@ -29,6 +30,13 @@ struct LogView: View {
                     Section("Session History") {
                         ForEach(diagnostics.sessions) { session in
                             SessionHistoryRow(session: session)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    guard session.outcome == .active else {
+                                        return
+                                    }
+                                    coordinator.showSession()
+                                }
                                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                     Button("Delete", systemImage: "trash", role: .destructive) {
                                         diagnostics.removeSession(session.id)
@@ -259,6 +267,12 @@ private struct SessionHistoryRow: View {
                 Text(session.outcome.title.appLocalizedKey)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(session.outcome.color)
+
+                if session.outcome == .active {
+                    Image(systemName: "chevron.forward")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tint)
+                }
             }
 
             Text(session.startedAt, format: .dateTime.year().month().day().hour().minute())
@@ -313,5 +327,6 @@ private extension BluFiSessionRecord {
 
 #Preview("Logs") {
     LogView()
+        .environment(AppCoordinator())
         .environment(BluFiDiagnosticsStore.preview())
 }

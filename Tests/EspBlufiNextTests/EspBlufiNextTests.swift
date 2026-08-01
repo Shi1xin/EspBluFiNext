@@ -7,6 +7,14 @@ final class EspBlufiNextTests: XCTestCase {
         XCTAssertTrue(true)
     }
 
+    func testAppCoordinatorShowsSessionTab() {
+        let coordinator = AppCoordinator()
+
+        coordinator.showSession()
+
+        XCTAssertEqual(coordinator.selectedTab, .session)
+    }
+
     func testPayloadCodecRoundTripsSupportedFormats() throws {
         let binaryBytes: [UInt8] = [0x00, 0x2A, 0xDE, 0xAD, 0xBE, 0xEF]
         for format in [BluFiPayloadFormat.hex, .base64] {
