@@ -126,6 +126,12 @@ That archive is suitable for verifying build output and requires a valid user si
 
 Use fake transport tests for deterministic protocol failures. Treat simulator results as UI and state evidence. Treat real-device results as BLE and firmware compatibility evidence.
 
+## Change scope and Git workflow
+
+- Substantive implementation changes use an `agent/<description>` branch and a PR after the work is complete. This includes runtime behavior, navigation or state ownership, protocol/security logic, data handling, dependencies, build or release configuration, tests, and performance work.
+- Non-substantive presentation changes may be committed and pushed directly to `main` when they are limited to screenshots, promotional compositions, marketing artwork, copy, README/docs wording, or visual asset placement. Review the rendered result and run `git diff --check` before pushing.
+- When a change combines presentation work with runtime behavior or has an unclear boundary, use the branch-and-PR workflow.
+
 ## Build iOS Apps plugin workflow
 
 Use the smallest relevant skill for the task:
