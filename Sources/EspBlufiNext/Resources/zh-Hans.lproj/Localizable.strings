@@ -28,6 +28,11 @@
 "Establish Secure Session" = "建立安全会话";
 "Read Wi-Fi Status" = "读取 Wi-Fi 状态";
 "Scan Wi-Fi from Device" = "从设备扫描 Wi-Fi";
+"Device Wi-Fi Scan" = "设备 Wi-Fi 扫描";
+"Choose Wi-Fi Network" = "选择 Wi-Fi 网络";
+"No Wi-Fi Networks Found" = "未发现 Wi-Fi 网络";
+"The ESP device did not report any nearby Wi-Fi networks." = "ESP 设备未上报附近的 Wi-Fi 网络。";
+"Close" = "关闭";
 "Wi-Fi Status" = "Wi-Fi 状态";
 "Provisioning" = "配网";
 "Provision Station Wi-Fi" = "配置 Station Wi-Fi";

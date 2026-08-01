@@ -92,6 +92,7 @@ private struct SessionDetailView: View {
     @Environment(BluFiDiagnosticsStore.self) private var diagnostics
     @State private var stationSSID = ""
     @State private var stationPassword = ""
+    @State private var isDeviceWiFiPickerPresented = false
 
     let device: BluFiDiscoveredDevice
 
@@ -104,7 +105,8 @@ private struct SessionDetailView: View {
                 device: device,
                 stationSSID: $stationSSID,
                 stationPassword: $stationPassword,
-                sendStationConfiguration: sendStationConfiguration
+                sendStationConfiguration: sendStationConfiguration,
+                scanDeviceWiFi: scanDeviceWiFi
             )
 
             if let status = session.wifiStatus {
@@ -114,6 +116,16 @@ private struct SessionDetailView: View {
             if !session.wifiNetworks.isEmpty {
                 DeviceWiFiScanSection(networks: session.wifiNetworks)
             }
+        }
+        .sheet(isPresented: $isDeviceWiFiPickerPresented) {
+            DeviceWiFiPicker(
+                networks: session.wifiNetworks,
+                selectedSSID: stationSSID
+            ) { selectedSSID in
+                stationSSID = selectedSSID
+                isDeviceWiFiPickerPresented = false
+            }
+            .presentationDetents([.medium, .large])
         }
     }
 
@@ -126,6 +138,14 @@ private struct SessionDetailView: View {
             )
             if didProvision {
                 stationPassword = ""
+            }
+        }
+    }
+
+    private func scanDeviceWiFi() {
+        Task {
+            if await session.scanDeviceWiFi(diagnostics: diagnostics) {
+                isDeviceWiFiPickerPresented = true
             }
         }
     }
@@ -161,6 +181,7 @@ private struct SessionCommandsSection: View {
     @Binding var stationSSID: String
     @Binding var stationPassword: String
     let sendStationConfiguration: () -> Void
+    let scanDeviceWiFi: () -> Void
 
     var body: some View {
         Section("Commands") {
@@ -168,6 +189,9 @@ private struct SessionCommandsSection: View {
                 .disabled(!session.phase.acceptsCommands || session.deviceVersion == nil)
 
             Button("Read Wi-Fi Status", systemImage: "wifi", action: readWiFiStatus)
+                .disabled(!session.phase.acceptsCommands)
+
+            Button("Scan Wi-Fi from Device", systemImage: "wifi.magnifyingglass", action: scanDeviceWiFi)
                 .disabled(!session.phase.acceptsCommands)
 
             NavigationLink {
@@ -197,6 +221,57 @@ private struct SessionCommandsSection: View {
 
     private func readWiFiStatus() {
         Task { await session.refreshWiFiStatus(diagnostics: diagnostics) }
+    }
+}
+
+private struct DeviceWiFiPicker: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let networks: [BluFiWiFiScanResult]
+    let selectedSSID: String
+    let select: (String) -> Void
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if networks.isEmpty {
+                    ContentUnavailableView(
+                        "No Wi-Fi Networks Found",
+                        systemImage: "wifi.slash",
+                        description: Text("The ESP device did not report any nearby Wi-Fi networks.")
+                    )
+                } else {
+                    List(networks) { network in
+                        Button {
+                            select(network.ssid)
+                            dismiss()
+                        } label: {
+                            HStack(spacing: 12) {
+                                Text(network.ssid)
+                                    .lineLimit(1)
+                                Spacer(minLength: 8)
+                                Text("\(network.rssi) dBm")
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                                if network.ssid == selectedSSID {
+                                    Image(systemName: "checkmark")
+                                        .foregroundStyle(.tint)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Choose Wi-Fi Network")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Close") {
+                        dismiss()
+                    }
+                }
+            }
+        }
     }
 }
 

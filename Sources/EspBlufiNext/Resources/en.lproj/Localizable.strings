@@ -28,6 +28,11 @@
 "Establish Secure Session" = "Establish Secure Session";
 "Read Wi-Fi Status" = "Read Wi-Fi Status";
 "Scan Wi-Fi from Device" = "Scan Wi-Fi from Device";
+"Device Wi-Fi Scan" = "Device Wi-Fi Scan";
+"Choose Wi-Fi Network" = "Choose Wi-Fi Network";
+"No Wi-Fi Networks Found" = "No Wi-Fi Networks Found";
+"The ESP device did not report any nearby Wi-Fi networks." = "The ESP device did not report any nearby Wi-Fi networks.";
+"Close" = "Close";
 "Wi-Fi Status" = "Wi-Fi Status";
 "Provisioning" = "Provisioning";
 "Provision Station Wi-Fi" = "Provision Station Wi-Fi";

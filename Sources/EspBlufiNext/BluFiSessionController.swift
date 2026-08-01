@@ -315,9 +315,10 @@ final class BluFiSessionController {
         }
     }
 
-    func scanDeviceWiFi(diagnostics: BluFiDiagnosticsStore) async {
+    @discardableResult
+    func scanDeviceWiFi(diagnostics: BluFiDiagnosticsStore) async -> Bool {
         guard let client, let sessionID = currentSessionID, !phase.isBusy else {
-            return
+            return false
         }
 
         record(diagnostics, category: .command, title: "Device Wi-Fi scan started")
@@ -327,7 +328,7 @@ final class BluFiSessionController {
         do {
             let networks = try await client.requestDeviceWiFiScan()
             guard currentSessionID == sessionID else {
-                return
+                return false
             }
             wifiNetworks = networks
             phase = readyPhase
@@ -337,9 +338,10 @@ final class BluFiSessionController {
                 title: "Device Wi-Fi scan received",
                 detail: "\(wifiNetworks.count) network(s)"
             )
+            return true
         } catch is CancellationError {
             guard currentSessionID == sessionID else {
-                return
+                return false
             }
             record(
                 diagnostics,
@@ -348,9 +350,10 @@ final class BluFiSessionController {
                 title: "Device Wi-Fi scan cancelled"
             )
             phase = readyPhase
+            return false
         } catch {
             guard currentSessionID == sessionID else {
-                return
+                return false
             }
             record(
                 diagnostics,
@@ -361,6 +364,7 @@ final class BluFiSessionController {
             )
             phase = .failed(error.localizedDescription)
             lastError = error.localizedDescription
+            return false
         }
     }
 
