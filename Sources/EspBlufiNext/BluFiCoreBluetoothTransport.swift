@@ -29,6 +29,11 @@ enum BluFiGATTError: Error, LocalizedError {
 /// owns only the selected peripheral, GATT discovery, writes and notifications.
 @MainActor
 final class BluFiCoreBluetoothTransport: NSObject, BluetoothTransport, @preconcurrency CBPeripheralDelegate {
+    private struct PendingReader {
+        let id: UUID
+        let continuation: CheckedContinuation<[UInt8]?, Error>
+    }
+
     private static let connectionTimeout: Duration = .seconds(12)
 
     private let peripheral: CBPeripheral
@@ -40,7 +45,7 @@ final class BluFiCoreBluetoothTransport: NSObject, BluetoothTransport, @preconcu
     private var writeContinuation: CheckedContinuation<Void, Error>?
     private var connectionTimeoutTask: Task<Void, Never>?
     private var preparationTimeoutTask: Task<Void, Never>?
-    private var packetReaders: [CheckedContinuation<[UInt8]?, Error>] = []
+    private var packetReaders: [PendingReader] = []
     private var queuedPackets: [[UInt8]] = []
     private var terminalError: (any Error)?
     private var isClosed = false
@@ -116,9 +121,20 @@ final class BluFiCoreBluetoothTransport: NSObject, BluetoothTransport, @preconcu
             return nil
         }
 
-        return try await withCheckedThrowingContinuation { continuation in
-            packetReaders.append(continuation)
-        }
+        let readerID = UUID()
+        return try await withTaskCancellationHandler(operation: {
+            try await withCheckedThrowingContinuation { continuation in
+                if Task.isCancelled {
+                    continuation.resume(throwing: CancellationError())
+                } else {
+                    packetReaders.append(PendingReader(id: readerID, continuation: continuation))
+                }
+            }
+        }, onCancel: {
+            Task { @MainActor [weak self] in
+                self?.cancelPacketReader(id: readerID)
+            }
+        })
     }
 
     func disconnect() {
@@ -239,10 +255,17 @@ final class BluFiCoreBluetoothTransport: NSObject, BluetoothTransport, @preconcu
 
         let packet = Array(value)
         if !packetReaders.isEmpty {
-            packetReaders.removeFirst().resume(returning: packet)
+            packetReaders.removeFirst().continuation.resume(returning: packet)
         } else {
             queuedPackets.append(packet)
         }
+    }
+
+    private func cancelPacketReader(id: UUID) {
+        guard let index = packetReaders.firstIndex(where: { $0.id == id }) else {
+            return
+        }
+        packetReaders.remove(at: index).continuation.resume(throwing: CancellationError())
     }
 
     private func failPreparation(_ error: any Error) {
@@ -296,9 +319,9 @@ final class BluFiCoreBluetoothTransport: NSObject, BluetoothTransport, @preconcu
         packetReaders.removeAll()
         for reader in readers {
             if let error {
-                reader.resume(throwing: error)
+                reader.continuation.resume(throwing: error)
             } else {
-                reader.resume(returning: nil)
+                reader.continuation.resume(returning: nil)
             }
         }
     }

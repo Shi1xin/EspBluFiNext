@@ -122,4 +122,111 @@ final class BluFiProtocolRuntimeTests: XCTestCase {
         let received = try await receiveTask.value
         XCTAssertEqual(received, [0xDE, 0xAD, 0xBE, 0xEF])
     }
+
+    func testClientPropagatesInvalidCRCFromResponse() async throws {
+        let transport = BluFiFakeTransport()
+        let client = try await BluFiClient(transport: transport, commandTimeout: .seconds(1))
+        let statusTask = Task {
+            try await client.requestDeviceStatus()
+        }
+
+        let response = BluFiFrame(
+            type: BluFiProtocol.typeValue(package: .data, subtype: .WiFiConnectionState),
+            control: [.inputDirection, .checksum],
+            sequence: 0,
+            data: [0x01]
+        )
+        var packet = try BluFiFrameCodec.encode(response)
+        packet[packet.count - 1] ^= 0xFF
+        await transport.receive(packet)
+
+        do {
+            _ = try await statusTask.value
+            XCTFail("Expected the invalid CRC to fail the request.")
+        } catch let error as BluFiProtocolError {
+            guard case .invalidChecksum = error else {
+                XCTFail("Expected invalidChecksum, received \(error).")
+                return
+            }
+        }
+    }
+
+    func testClientRejectsUnexpectedResponseSequence() async throws {
+        let transport = BluFiFakeTransport()
+        let client = try await BluFiClient(transport: transport, commandTimeout: .seconds(1))
+        let versionTask = Task {
+            try await client.requestDeviceVersion()
+        }
+
+        let response = BluFiFrame(
+            type: BluFiProtocol.typeValue(package: .data, subtype: .version),
+            control: [.inputDirection],
+            sequence: 1,
+            data: [1, 3]
+        )
+        await transport.receive(try BluFiFrameCodec.encode(response))
+
+        do {
+            _ = try await versionTask.value
+            XCTFail("Expected the unexpected sequence to fail the request.")
+        } catch let error as BluFiProtocolError {
+            XCTAssertEqual(error, .unexpectedSequence(expected: 0, actual: 1))
+        }
+    }
+
+    func testSessionReportsAcknowledgementTimeout() async throws {
+        let transport = BluFiFakeTransport()
+        let session = try await BluFiSession(transport: transport, commandTimeout: .milliseconds(100))
+
+        do {
+            try await session.post(
+                type: BluFiProtocol.typeValue(package: .data, subtype: .customData),
+                data: [0xA5],
+                options: .init(requiresAcknowledgement: true)
+            )
+            XCTFail("Expected the missing acknowledgement to time out.")
+        } catch let error as BluFiProtocolError {
+            XCTAssertEqual(error, .acknowledgementTimeout(sequence: 0))
+        }
+    }
+
+    func testSessionPropagatesTransportDisconnect() async throws {
+        let transport = BluFiFakeTransport()
+        let client = try await BluFiClient(transport: transport, commandTimeout: .seconds(1))
+        let versionTask = Task {
+            try await client.requestDeviceVersion()
+        }
+
+        await transport.finish()
+
+        do {
+            _ = try await versionTask.value
+            XCTFail("Expected the closed transport to fail the request.")
+        } catch let error as BluFiProtocolError {
+            XCTAssertEqual(error, .transportClosed)
+        }
+    }
+
+    func testFragmentReassemblerReportsInterruptedPayload() throws {
+        let type = BluFiProtocol.typeValue(package: .data, subtype: .customData)
+        var reassembler = BluFiFragmentReassembler()
+
+        let firstFragment = BluFiFrame(
+            type: type,
+            control: [.fragmented],
+            sequence: 0,
+            data: [5, 0, 0x01, 0x02]
+        )
+        XCTAssertNil(try reassembler.append(firstFragment))
+
+        let interruptedPayload = BluFiFrame(
+            type: type,
+            control: [],
+            sequence: 1,
+            data: [0x03]
+        )
+        XCTAssertThrowsError(try reassembler.append(interruptedPayload)) { error in
+            XCTAssertEqual(error as? BluFiProtocolError, .fragmentLengthMismatch(expected: 5, actual: 3))
+        }
+    }
 }

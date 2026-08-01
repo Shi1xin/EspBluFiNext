@@ -155,6 +155,32 @@ final class BluFiSecurityTests: XCTestCase {
         XCTAssertEqual(Array(writes[20].prefix(5)), [0x04, 0x02, 0x14, 0x01, 0x03])
     }
 
+    func testSecurityNegotiationRejectsInvalidDevicePublicKey() async throws {
+        let transport = BluFiFakeTransport()
+        let client = try await BluFiClient(transport: transport, commandTimeout: .seconds(1))
+        let negotiationTask = Task {
+            try await client.negotiateSecurity(
+                deviceVersion: BluFiDeviceVersion(major: 1, minor: 3),
+                override: .v1
+            )
+        }
+
+        let invalidDevicePublicKey = BluFiFrame(
+            type: BluFiProtocol.typeValue(package: .data, subtype: .negotiateSecurity),
+            control: [.inputDirection],
+            sequence: 0,
+            data: [0]
+        )
+        await transport.receive(try BluFiFrameCodec.encode(invalidDevicePublicKey))
+
+        do {
+            _ = try await negotiationTask.value
+            XCTFail("Expected the invalid device public key to fail negotiation.")
+        } catch let error as BluFiSecurityError {
+            XCTAssertEqual(error, .invalidDevicePublicKey)
+        }
+    }
+
     private func hexadecimal(_ value: String) -> [UInt8] {
         stride(from: 0, to: value.count, by: 2).map { offset in
             let start = value.index(value.startIndex, offsetBy: offset)

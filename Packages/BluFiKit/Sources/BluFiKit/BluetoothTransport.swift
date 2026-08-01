@@ -10,9 +10,14 @@ public protocol BluetoothTransport: Sendable {
 
 /// Deterministic transport for protocol and command tests.
 public actor BluFiFakeTransport: BluetoothTransport {
+    private struct PendingReader {
+        let id: UUID
+        let continuation: CheckedContinuation<[UInt8]?, Error>
+    }
+
     private var packetsWritten: [[UInt8]] = []
     private var packetsToRead: [[UInt8]] = []
-    private var readers: [CheckedContinuation<[UInt8]?, Error>] = []
+    private var readers: [PendingReader] = []
     private var terminalError: (any Error)?
     private var isClosed = false
 
@@ -33,9 +38,18 @@ public actor BluFiFakeTransport: BluetoothTransport {
             return nil
         }
 
-        return try await withCheckedThrowingContinuation { continuation in
-            readers.append(continuation)
-        }
+        let readerID = UUID()
+        return try await withTaskCancellationHandler(operation: {
+            try await withCheckedThrowingContinuation { continuation in
+                if Task.isCancelled {
+                    continuation.resume(throwing: CancellationError())
+                } else {
+                    readers.append(PendingReader(id: readerID, continuation: continuation))
+                }
+            }
+        }, onCancel: {
+            Task { await self.cancelReader(id: readerID) }
+        })
     }
 
     public func disconnect() {
@@ -44,10 +58,17 @@ public actor BluFiFakeTransport: BluetoothTransport {
 
     public func receive(_ packet: [UInt8]) {
         if !readers.isEmpty {
-            readers.removeFirst().resume(returning: packet)
+            readers.removeFirst().continuation.resume(returning: packet)
         } else {
             packetsToRead.append(packet)
         }
+    }
+
+    private func cancelReader(id: UUID) {
+        guard let index = readers.firstIndex(where: { $0.id == id }) else {
+            return
+        }
+        readers.remove(at: index).continuation.resume(throwing: CancellationError())
     }
 
     public func finish(throwing error: (any Error)? = nil) {
@@ -60,9 +81,9 @@ public actor BluFiFakeTransport: BluetoothTransport {
         readers.removeAll()
         for reader in pendingReaders {
             if let error {
-                reader.resume(throwing: error)
+                reader.continuation.resume(throwing: error)
             } else {
-                reader.resume(returning: nil)
+                reader.continuation.resume(returning: nil)
             }
         }
     }
