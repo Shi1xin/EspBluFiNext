@@ -206,6 +206,8 @@
 "The device accepted the Station configuration without a status report. Re-enter provisioning mode and reconnect to query its current Wi-Fi state." = "设备已接受 Station 配置，但未返回状态报告。请重新进入配网模式并重新连接，以查询当前 Wi-Fi 状态。";
 "BluFi Version" = "BluFi 版本";
 "Identifier" = "标识符";
+"Show Full Identifier" = "查看完整标识符";
+"Copy Identifier" = "复制标识符";
 "Name" = "名称";
 "RSSI" = "RSSI";
 "BSSID" = "BSSID";

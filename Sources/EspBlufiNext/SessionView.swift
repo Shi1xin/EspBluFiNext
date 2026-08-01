@@ -145,8 +145,7 @@ private struct SessionDeviceSection: View {
     var body: some View {
         Section("Device") {
             LabeledContent("Name", value: device.name)
-            LabeledContent("Identifier", value: device.id.uuidString.lowercased())
-                .font(.caption.monospaced())
+            DeviceIdentifierView(identifier: device.id)
             LabeledContent("RSSI", value: "\(device.rssi) dBm")
 
             if let version = session.deviceVersion {
