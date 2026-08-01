@@ -60,6 +60,8 @@ private struct SessionDetailView: View {
 
     var body: some View {
         Form {
+            SessionDashboardHeader(device: device)
+
             SessionStatusSection()
             SessionDeviceSection(device: device)
             SessionCommandsSection()
@@ -68,11 +70,19 @@ private struct SessionDetailView: View {
                 WiFiStatusSection(status: status)
             }
 
-            StationProvisioningSection(
-                ssid: $stationSSID,
-                password: $stationPassword,
-                send: sendStationConfiguration
-            )
+            Section("Provisioning") {
+                NavigationLink {
+                    ProvisioningView(
+                        ssid: $stationSSID,
+                        password: $stationPassword,
+                        device: device,
+                        send: sendStationConfiguration
+                    )
+                } label: {
+                    Label("Provision Station Wi-Fi", systemImage: "paperplane")
+                }
+                .disabled(!session.phase.acceptsCommands)
+            }
 
             if !session.wifiNetworks.isEmpty {
                 DeviceWiFiScanSection(networks: session.wifiNetworks)
@@ -198,31 +208,6 @@ private struct WiFiStatusSection: View {
             if let reason = status.failureReason {
                 LabeledContent("Failure Reason", value: String(reason))
             }
-        }
-    }
-}
-
-private struct StationProvisioningSection: View {
-    @Binding var ssid: String
-    @Binding var password: String
-    let send: () -> Void
-
-    var body: some View {
-        Section {
-            TextField("SSID", text: $ssid)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-            SecureField("Password", text: $password)
-                .textContentType(.password)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-
-            Button("Send Station Configuration", systemImage: "paperplane", action: send)
-                .disabled(ssid.isEmpty)
-        } header: {
-            Text("Provision Station Wi-Fi")
-        } footer: {
-            Text("The password is sent once and is never retained in session state or logs.")
         }
     }
 }
