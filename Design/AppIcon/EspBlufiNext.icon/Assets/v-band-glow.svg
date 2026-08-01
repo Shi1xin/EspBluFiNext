@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <path
-    d="M270 320 L512 704 L754 320"
+    d="M300 370 L480 655 M544 655 L724 370"
     fill="none"
-    stroke="#AEB0B5"
-    stroke-width="80"
+    stroke="#B6C9E8"
+    stroke-width="112"
     stroke-linecap="butt"
     stroke-linejoin="miter"
-    stroke-miterlimit="10"/>
+    stroke-miterlimit="10"
+    opacity="0.28"/>
 </svg>

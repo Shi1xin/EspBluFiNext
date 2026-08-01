@@ -89,6 +89,29 @@
           "glass": true,
           "image-name": "v-band.svg",
           "name": "V band"
+        },
+        {
+          "fill-specializations": [
+            {
+              "value": {
+                "solid": "extended-srgb:0.65000,0.73000,0.88000,0.26000"
+              }
+            },
+            {
+              "appearance": "dark",
+              "value": {
+                "solid": "extended-srgb:0.30000,0.62000,1.00000,0.42000"
+              }
+            },
+            {
+              "appearance": "tinted",
+              "value": "automatic"
+            }
+          ],
+          "glass": false,
+          "image-name": "v-band-glow.svg",
+          "name": "V band glow",
+          "opacity": 0.56
         }
       ],
       "lighting": "combined",
