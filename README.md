@@ -4,6 +4,10 @@ EspBluFiNext is a modern native iOS 26 diagnostic client for ESP32 devices that 
 
 [简体中文](README.zh-CN.md)
 
+<p align="center">
+  <img src="Design/Marketing/espblufinext-hero-en@2x.png" alt="EspBluFiNext promotional artwork" width="100%">
+</p>
+
 [License](LICENSE) · [Third-party notices](THIRD-PARTY-NOTICES.md) · [Branding guide](docs/BRANDING.md)
 
 ## Project status

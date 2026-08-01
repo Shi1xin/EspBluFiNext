@@ -4,6 +4,10 @@ EspBluFiNext 是面向 Espressif [BluFi 协议](https://docs.espressif.com/proje
 
 [English](README.md)
 
+<p align="center">
+  <img src="Design/Marketing/espblufinext-hero-en@2x.png" alt="EspBluFiNext 宣传图" width="100%">
+</p>
+
 [许可证](LICENSE) · [第三方声明](THIRD-PARTY-NOTICES.md) · [品牌规范](docs/BRANDING.md)
 
 ## 项目定位
