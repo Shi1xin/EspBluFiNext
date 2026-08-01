@@ -1,5 +1,6 @@
 .DS_Store
 Config/Local.xcconfig
+Config/ExportOptions.plist
 EspBlufiNext.xcodeproj/
 build/
 DerivedData/

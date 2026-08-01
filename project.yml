@@ -26,6 +26,8 @@ targets:
     info:
       path: Sources/EspBlufiNext/Info.plist
       properties:
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         NSBluetoothAlwaysUsageDescription: "EspBluFi uses Bluetooth to discover and communicate with ESP BluFi devices."
         NSLocationWhenInUseUsageDescription: "EspBluFi uses precise location access to read the current iPhone Wi-Fi network name."
         UILaunchScreen: {}
