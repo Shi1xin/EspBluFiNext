@@ -1,34 +1,147 @@
 # EspBlufiNext
 
-## Project source of truth
+## Scope
 
-- `project.yml` is the source of truth for the Xcode project.
-- Regenerate `EspBlufiNext.xcodeproj` with `xcodegen generate` after changing the project definition or adding source files.
-- Keep signing identifiers in `Config/Local.xcconfig`; never commit the local file.
-- `Packages/BluFiKit` owns protocol framing, transport-independent state, and BluFi security.
-- `Sources/EspBlufiNext` owns SwiftUI and CoreBluetooth integration.
+EspBlufiNext is a native iOS 26 diagnostic client for ESP BluFi devices. The app uses SwiftUI for the interface, CoreBluetooth for the BLE link, and BluFiKit for transport-independent protocol and security behavior.
 
-## Commands
+The app is distributed from GitHub source code. Each user supplies their own Apple Development team, signing certificate, bundle ID registration, and provisioning profile for a physical-device build or sideloaded IPA.
+
+## Source of truth and repository hygiene
+
+- `project.yml` is the source of truth for the Xcode project. Run `xcodegen generate` after changing it or adding project resources.
+- `EspBlufiNext.xcodeproj` is generated and ignored. Do not edit or commit it manually.
+- `Config/Local.xcconfig` and `Config/ExportOptions.plist` contain user-specific signing data. Keep both local and never commit them.
+- `build/`, `DerivedData/`, package build products, archives, exported IPAs, and local SwiftPM caches are generated artifacts.
+- Version defaults live in `Config/Debug.xcconfig` and `Config/Release.xcconfig`. Release scripts can override them with `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`.
+- Keep protocol behavior, signing configuration, and user credentials separate from UI-only changes.
+
+## Module boundaries
+
+| Area | Responsibility |
+|---|---|
+| `Sources/EspBlufiNext` | SwiftUI screens, app coordinator, CoreBluetooth scanner/transport, session state, provisioning UI, custom-data console, diagnostics, localization, and local settings |
+| `Packages/BluFiKit` | BluFi frame/CRC codec, fragmentation, V1/V2 security negotiation, transport-independent session actors, provisioning payloads/parsers, Wi-Fi status and scan models, and fake transport tests |
+| `Tests/EspBlufiNextTests` | App coordinator, payload codec, diagnostics persistence/redaction, and app-state tests |
+| `Packages/BluFiKit/Tests` | Protocol vectors, security, ACK/fragmentation, transport cancellation, provisioning, and parser tests |
+| `project.yml` | Targets, package dependency, resources, Info.plist properties, signing-related build settings, and schemes |
+
+Keep command orchestration in `BluFiSessionController` and transport details in the transport implementations. Keep `BluFiKit` independent of SwiftUI and CoreBluetooth.
+
+## Toolchain and one-time setup
+
+Use the full Xcode beta toolchain for iOS 26:
+
+```bash
+sudo xcode-select --switch /Applications/Xcode-beta.app/Contents/Developer
+sudo xcodebuild -license accept
+sudo xcodebuild -runFirstLaunch
+brew install xcodegen
+xcodebuild -version
+```
+
+For a physical iPhone or iPad, create the local signing file and set the Apple Development team:
+
+```bash
+cp Config/Local.xcconfig.example Config/Local.xcconfig
+# Set DEVELOPMENT_TEAM in Config/Local.xcconfig.
+```
+
+The local file is intentionally ignored. Do not put a Team ID, certificate, profile name, Wi-Fi password, or private key in tracked files.
+
+## Build and test commands
+
+Run commands from the repository root:
 
 ```bash
 xcodegen generate
 swift test --package-path Packages/BluFiKit
 ./scripts/build-ios.sh
-xcodebuild -project EspBlufiNext.xcodeproj -scheme EspBlufiNext -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
-xcodebuild -project EspBlufiNext.xcodeproj -scheme EspBlufiNext -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO test
+xcodebuild -project EspBlufiNext.xcodeproj \
+  -scheme EspBlufiNext \
+  -destination 'generic/platform=iOS Simulator' \
+  CODE_SIGNING_ALLOWED=NO build
 ```
 
-Use the full Xcode beta toolchain through `xcode-select` before invoking `xcodebuild`.
+Run App tests on a concrete simulator destination. A generic simulator destination can build, but it cannot execute tests:
 
-## Build iOS Apps Plugin workflow
+```bash
+xcodebuild -project EspBlufiNext.xcodeproj \
+  -scheme EspBlufiNext \
+  -destination 'platform=iOS Simulator,id=<SIMULATOR_UDID>' \
+  CODE_SIGNING_ALLOWED=NO test
+```
 
-- Use `swiftui-ui-patterns` for App Shell, navigation, state ownership, screen composition, and previews.
-- Use `swiftui-liquid-glass` for every Liquid Glass implementation or review.
-- Use `ios-debugger-agent` to build, launch, inspect UI, interact with Simulator, and capture logs after a simulator is already booted.
-- Use `ios-simulator-browser` when browser-visible Simulator proof or package-backed preview hot reload is useful.
-- Use `swiftui-view-refactor` when a SwiftUI view mixes business logic, owns broad state, or approaches 300 lines.
-- Start performance investigations with `swiftui-performance-audit`; use `ios-ettrace-performance` for one trace-backed flow and `ios-memgraph-leaks` for ownership-path leak evidence.
-- Use `ios-app-intents` when approved scope includes Shortcuts, Siri, Spotlight, app entities, or external routing. Keep intent types thin and route app-opening actions through the App Coordinator.
-- Treat Simulator automation, ETTrace, and memgraph as UI/runtime evidence. Validate CoreBluetooth scanning, writes, notifications, security negotiation, and protocol compatibility on a real iPhone or iPad connected to an ESP device.
+Run a physical-device build with the local signing team:
 
-The planning map and first App Intents boundary live in `../EspBluFiNextPlans/build-ios-apps-plugin-workflow.md`.
+```bash
+DESTINATION='generic/platform=iOS' ./scripts/build-ios.sh
+```
+
+## Release archive and self-signing
+
+The GitHub workflow produces source and repeatable local build steps. A signed IPA is created by the person who owns the target Apple team:
+
+```bash
+cp Config/ExportOptions.plist.example Config/ExportOptions.plist
+# Set teamID and the development provisioning profile for com.espblufi.next.
+
+MARKETING_VERSION=0.1.0 \
+CURRENT_PROJECT_VERSION=1 \
+./scripts/archive-ios.sh
+
+./scripts/export-ios.sh
+```
+
+The archive is written to `build/archive/` and the IPA to `build/export/`. The export profile uses manual development signing. The user may replace it with an equivalent profile generated by their own Xcode account and team. TestFlight and App Store Connect are outside the current distribution scope.
+
+For build-only archive verification:
+
+```bash
+CODE_SIGNING_ALLOWED=NO \
+CODE_SIGNING_REQUIRED=NO \
+./scripts/archive-ios.sh
+```
+
+That archive is suitable for verifying build output and requires a valid user signature before installation.
+
+## Development workflow
+
+1. Read the relevant plan and constraints in `../EspBluFiNextPlans`.
+2. Change the smallest owning module.
+3. Run `xcodegen generate` after project-definition changes.
+4. Run package tests for protocol or security changes.
+5. Run App tests and a simulator build for UI, coordinator, diagnostics, or localization changes.
+6. Use a real iPhone/iPad and ESP hardware for CoreBluetooth scanning, connection, GATT writes, notifications, security negotiation, Wi-Fi provisioning, and disconnect behavior.
+7. Review `git diff --check`, inspect generated artifacts, and commit only the intended tracked files.
+
+Use fake transport tests for deterministic protocol failures. Treat simulator results as UI and state evidence. Treat real-device results as BLE and firmware compatibility evidence.
+
+## Build iOS Apps plugin workflow
+
+Use the smallest relevant skill for the task:
+
+- `swiftui-ui-patterns`: app shell, navigation, state ownership, screen composition, and previews.
+- `swiftui-liquid-glass`: every Liquid Glass implementation or review on iOS 26.
+- `swiftui-view-refactor`: large SwiftUI views, mixed business logic, or broad state ownership.
+- `ios-debugger-agent`: build, launch, inspect, interact with, and capture logs from a booted simulator.
+- `ios-simulator-browser`: browser-visible simulator evidence or SwiftUI Preview hot reload.
+- `swiftui-performance-audit`: initial code review for refresh, layout, list identity, and main-thread costs.
+- `ios-ettrace-performance`: one trace-backed flow after a reproducible performance symptom.
+- `ios-memgraph-leaks`: ownership-path evidence after reproducible memory growth.
+- `ios-app-intents`: only after the system-entry scope is approved; keep intents thin and route through `AppCoordinator`.
+
+Simulator automation, ETTrace, and memgraph provide runtime evidence. CoreBluetooth and BluFi protocol compatibility conclusions require real-device validation.
+
+## Security and diagnostics rules
+
+- Wi-Fi passwords are sent once for provisioning and are not retained in session state or diagnostics.
+- Diagnostic exports are redacted by default. Preserve byte counts and protocol metadata while excluding credentials, keys, certificates, and raw sensitive payloads.
+- Do not log private keys, session keys, Wi-Fi passwords, or unredacted custom data.
+- Keep custom-data format conversion in `BluFiPayloadCodec`; keep wire-format details in BluFiKit.
+- Preserve explicit user actions for sharing or exporting diagnostics.
+
+## Current compatibility boundary
+
+The confirmed hardware baseline is ESP32-S3, ESP-IDF 5.5.2, BluFi 1.3, Security V1, and Station provisioning. Additional chips, ESP-IDF 6.x/V2, SoftAP/APSTA behavior, and broader firmware matrices require separate real-device validation.
+
+App Intents, Siri, Shortcuts, and Spotlight entry points remain deferred. Performance work follows measurement-first evidence; use a fixed scan → connect → secure session → status → Wi-Fi scan → provisioning → disconnect flow for comparisons.
