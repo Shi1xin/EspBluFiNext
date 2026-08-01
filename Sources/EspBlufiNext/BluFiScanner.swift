@@ -68,11 +68,11 @@ final class BluFiScanner: NSObject, @preconcurrency CBCentralManagerDelegate {
         }
     }
 
-    func toggleScanning() {
-        isScanning ? stopScanning() : startScanning()
+    func toggleScanning(diagnostics: BluFiDiagnosticsStore? = nil) {
+        isScanning ? stopScanning(diagnostics: diagnostics) : startScanning(diagnostics: diagnostics)
     }
 
-    func startScanning() {
+    func startScanning(diagnostics: BluFiDiagnosticsStore? = nil) {
         guard bluetoothState.canScan, let central else {
             return
         }
@@ -84,15 +84,21 @@ final class BluFiScanner: NSObject, @preconcurrency CBCentralManagerDelegate {
             options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
         )
         isScanning = true
+        diagnostics?.record(
+            category: .bluetooth,
+            title: "Scanning started",
+            detail: "BluFi service UUID filter active"
+        )
     }
 
-    func stopScanning() {
+    func stopScanning(diagnostics: BluFiDiagnosticsStore? = nil) {
         guard isScanning else {
             return
         }
 
         central?.stopScan()
         isScanning = false
+        diagnostics?.record(category: .bluetooth, title: "Scanning stopped")
     }
 
     func peripheral(for id: UUID) -> CBPeripheral? {

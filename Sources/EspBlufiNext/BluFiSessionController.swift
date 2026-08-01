@@ -68,15 +68,32 @@ final class BluFiSessionController {
     @ObservationIgnored
     private var client: BluFiClient?
 
+    @ObservationIgnored
+    private var currentSessionID: UUID?
+
     var isConnected: Bool {
         client != nil && connectedDevice != nil
     }
 
-    func connect(to device: BluFiDiscoveredDevice, using scanner: BluFiScanner) async {
+    func connect(
+        to device: BluFiDiscoveredDevice,
+        using scanner: BluFiScanner,
+        diagnostics: BluFiDiagnosticsStore
+    ) async {
         guard !phase.isBusy else {
             return
         }
 
+        let sessionID = diagnostics.beginSession(for: device)
+        currentSessionID = sessionID
+        record(
+            diagnostics,
+            category: .connection,
+            title: "Connection requested",
+            detail: device.name,
+            sessionID: sessionID,
+            deviceID: device.id
+        )
         phase = .connecting
         lastError = nil
         wifiStatus = nil
@@ -84,26 +101,68 @@ final class BluFiSessionController {
 
         do {
             let client = try await scanner.connect(to: device)
+            record(
+                diagnostics,
+                category: .connection,
+                title: "Bluetooth link and GATT ready",
+                sessionID: sessionID,
+                deviceID: device.id
+            )
             let version = try await client.requestDeviceVersion()
             self.client = client
             connectedDevice = device
             deviceVersion = version
             securityVersion = nil
             phase = .ready
+            record(
+                diagnostics,
+                category: .protocolExchange,
+                title: "Device version received",
+                detail: "BluFi \(version.major).\(version.minor)",
+                sessionID: sessionID,
+                deviceID: device.id
+            )
         } catch is CancellationError {
+            record(
+                diagnostics,
+                category: .connection,
+                severity: .warning,
+                title: "Connection cancelled",
+                sessionID: sessionID,
+                deviceID: device.id
+            )
+            diagnostics.finishSession(sessionID, outcome: .cancelled)
             scanner.disconnectActiveDevice()
             reset()
         } catch {
+            record(
+                diagnostics,
+                category: .connection,
+                severity: .error,
+                title: "Connection failed",
+                detail: error.localizedDescription,
+                sessionID: sessionID,
+                deviceID: device.id
+            )
+            diagnostics.finishSession(sessionID, outcome: .failed)
             scanner.disconnectActiveDevice()
             reset(with: error)
         }
     }
 
-    func negotiateSecurity(override: BluFiSecurityOverride = .automatic) async {
+    func negotiateSecurity(
+        override: BluFiSecurityOverride = .automatic,
+        diagnostics: BluFiDiagnosticsStore
+    ) async {
         guard let client, let deviceVersion, !phase.isBusy else {
             return
         }
 
+        record(
+            diagnostics,
+            category: .security,
+            title: "Secure session negotiation started"
+        )
         phase = .securing
         lastError = nil
 
@@ -113,58 +172,129 @@ final class BluFiSessionController {
                 override: override
             )
             phase = readyPhase
+            record(
+                diagnostics,
+                category: .security,
+                title: "Secure session established",
+                detail: "Security V\(securityVersion?.rawValue ?? 0)"
+            )
         } catch is CancellationError {
+            record(
+                diagnostics,
+                category: .security,
+                severity: .warning,
+                title: "Secure session negotiation cancelled"
+            )
             phase = readyPhase
         } catch {
+            record(
+                diagnostics,
+                category: .security,
+                severity: .error,
+                title: "Secure session negotiation failed",
+                detail: error.localizedDescription
+            )
             phase = .failed(error.localizedDescription)
             lastError = error.localizedDescription
         }
     }
 
-    func refreshWiFiStatus() async {
+    func refreshWiFiStatus(diagnostics: BluFiDiagnosticsStore) async {
         guard let client, !phase.isBusy else {
             return
         }
 
+        record(diagnostics, category: .command, title: "Read Wi-Fi Status started")
         phase = .working("Reading Wi-Fi Status")
         lastError = nil
 
         do {
             wifiStatus = try await client.requestDeviceStatus()
             phase = readyPhase
+            if let wifiStatus {
+                record(
+                    diagnostics,
+                    category: .wiFi,
+                    title: "Wi-Fi status received",
+                    detail: statusSummary(wifiStatus)
+                )
+            }
         } catch is CancellationError {
+            record(
+                diagnostics,
+                category: .command,
+                severity: .warning,
+                title: "Read Wi-Fi Status cancelled"
+            )
             phase = readyPhase
         } catch {
+            record(
+                diagnostics,
+                category: .command,
+                severity: .error,
+                title: "Read Wi-Fi Status failed",
+                detail: error.localizedDescription
+            )
             phase = .failed(error.localizedDescription)
             lastError = error.localizedDescription
         }
     }
 
-    func scanDeviceWiFi() async {
+    func scanDeviceWiFi(diagnostics: BluFiDiagnosticsStore) async {
         guard let client, !phase.isBusy else {
             return
         }
 
+        record(diagnostics, category: .command, title: "Device Wi-Fi scan started")
         phase = .working("Scanning Wi-Fi Networks")
         lastError = nil
 
         do {
             wifiNetworks = try await client.requestDeviceWiFiScan()
             phase = readyPhase
+            record(
+                diagnostics,
+                category: .wiFi,
+                title: "Device Wi-Fi scan received",
+                detail: "\(wifiNetworks.count) network(s)"
+            )
         } catch is CancellationError {
+            record(
+                diagnostics,
+                category: .command,
+                severity: .warning,
+                title: "Device Wi-Fi scan cancelled"
+            )
             phase = readyPhase
         } catch {
+            record(
+                diagnostics,
+                category: .command,
+                severity: .error,
+                title: "Device Wi-Fi scan failed",
+                detail: error.localizedDescription
+            )
             phase = .failed(error.localizedDescription)
             lastError = error.localizedDescription
         }
     }
 
     @discardableResult
-    func provisionStation(ssid: String, password: String) async -> Bool {
+    func provisionStation(
+        ssid: String,
+        password: String,
+        diagnostics: BluFiDiagnosticsStore
+    ) async -> Bool {
         guard let client, !phase.isBusy else {
             return false
         }
 
+        record(
+            diagnostics,
+            category: .provisioning,
+            title: "Station provisioning started",
+            detail: "SSID provided; password omitted"
+        )
         phase = .working("Provisioning Wi-Fi")
         lastError = nil
 
@@ -181,20 +311,43 @@ final class BluFiSessionController {
                 waitForStationStatus: true
             )
             phase = wifiStatus == nil ? .stationConfigurationSent : readyPhase
+            record(
+                diagnostics,
+                category: .provisioning,
+                title: "Station configuration accepted",
+                detail: wifiStatus.map(statusSummary) ?? "No station status report before the device closed BluFi"
+            )
             return true
         } catch is CancellationError {
+            record(
+                diagnostics,
+                category: .provisioning,
+                severity: .warning,
+                title: "Station provisioning cancelled"
+            )
             phase = readyPhase
             return false
         } catch {
+            record(
+                diagnostics,
+                category: .provisioning,
+                severity: .error,
+                title: "Station provisioning failed",
+                detail: error.localizedDescription
+            )
             phase = .failed(error.localizedDescription)
             lastError = error.localizedDescription
             return false
         }
     }
 
-    func disconnect(using scanner: BluFiScanner) async {
+    func disconnect(using scanner: BluFiScanner, diagnostics: BluFiDiagnosticsStore) async {
+        record(diagnostics, category: .connection, title: "Disconnect requested")
         if let client {
             try? await client.closeConnection()
+        }
+        if let currentSessionID {
+            diagnostics.finishSession(currentSessionID, outcome: .disconnected)
         }
         scanner.disconnectActiveDevice()
         reset()
@@ -210,6 +363,7 @@ final class BluFiSessionController {
 
     private func reset(with error: (any Error)? = nil) {
         client = nil
+        currentSessionID = nil
         connectedDevice = nil
         deviceVersion = nil
         securityVersion = nil
@@ -217,5 +371,40 @@ final class BluFiSessionController {
         wifiNetworks = []
         lastError = error?.localizedDescription
         phase = error.map { .failed($0.localizedDescription) } ?? .idle
+    }
+
+    private func record(
+        _ diagnostics: BluFiDiagnosticsStore,
+        category: BluFiDiagnosticCategory,
+        severity: BluFiDiagnosticSeverity = .info,
+        title: String,
+        detail: String? = nil,
+        sessionID: UUID? = nil,
+        deviceID: UUID? = nil
+    ) {
+        diagnostics.record(
+            category: category,
+            severity: severity,
+            title: title,
+            detail: detail,
+            sessionID: sessionID ?? currentSessionID,
+            deviceID: deviceID ?? connectedDevice?.id
+        )
+    }
+
+    private func statusSummary(_ status: BluFiWiFiStatus) -> String {
+        let stationState: String = switch status.stationState {
+        case .connected:
+            "Station Connected"
+        case .failed:
+            "Station Failed"
+        case .connecting:
+            "Station Connecting"
+        case .noIP:
+            "Station No IP"
+        case let .unknown(value):
+            "Station Unknown (\(value))"
+        }
+        return "\(stationState) · IP \(status.hasIP ? "Available" : "Unavailable")"
     }
 }

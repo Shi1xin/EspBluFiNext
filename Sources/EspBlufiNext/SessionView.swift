@@ -4,6 +4,7 @@ import SwiftUI
 struct SessionView: View {
     @Environment(BluFiScanner.self) private var scanner
     @Environment(BluFiSessionController.self) private var session
+    @Environment(BluFiDiagnosticsStore.self) private var diagnostics
 
     var body: some View {
         NavigationStack {
@@ -44,13 +45,14 @@ struct SessionView: View {
 
     private func disconnect() {
         Task {
-            await session.disconnect(using: scanner)
+            await session.disconnect(using: scanner, diagnostics: diagnostics)
         }
     }
 }
 
 private struct SessionDetailView: View {
     @Environment(BluFiSessionController.self) private var session
+    @Environment(BluFiDiagnosticsStore.self) private var diagnostics
     @State private var stationSSID = ""
     @State private var stationPassword = ""
 
@@ -82,7 +84,8 @@ private struct SessionDetailView: View {
         Task {
             let didProvision = await session.provisionStation(
                 ssid: stationSSID,
-                password: stationPassword
+                password: stationPassword,
+                diagnostics: diagnostics
             )
             if didProvision {
                 stationPassword = ""
@@ -144,6 +147,7 @@ private struct SessionDeviceSection: View {
 
 private struct SessionCommandsSection: View {
     @Environment(BluFiSessionController.self) private var session
+    @Environment(BluFiDiagnosticsStore.self) private var diagnostics
 
     var body: some View {
         Section("Commands") {
@@ -159,15 +163,15 @@ private struct SessionCommandsSection: View {
     }
 
     private func establishSecureSession() {
-        Task { await session.negotiateSecurity() }
+        Task { await session.negotiateSecurity(diagnostics: diagnostics) }
     }
 
     private func readWiFiStatus() {
-        Task { await session.refreshWiFiStatus() }
+        Task { await session.refreshWiFiStatus(diagnostics: diagnostics) }
     }
 
     private func scanWiFi() {
-        Task { await session.scanDeviceWiFi() }
+        Task { await session.scanDeviceWiFi(diagnostics: diagnostics) }
     }
 }
 

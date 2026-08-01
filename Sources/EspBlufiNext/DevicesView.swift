@@ -6,6 +6,7 @@ struct DeviceListView: View {
     @Environment(AppCoordinator.self) private var coordinator
     @Environment(BluFiScanner.self) private var scanner
     @Environment(BluFiSessionController.self) private var session
+    @Environment(BluFiDiagnosticsStore.self) private var diagnostics
 
     var body: some View {
         NavigationStack {
@@ -82,13 +83,13 @@ struct DeviceListView: View {
     }
 
     private func toggleScanning() {
-        scanner.toggleScanning()
+        scanner.toggleScanning(diagnostics: diagnostics)
     }
 
     private func connect(to device: BluFiDiscoveredDevice) {
         coordinator.showSession()
         Task {
-            await session.connect(to: device, using: scanner)
+            await session.connect(to: device, using: scanner, diagnostics: diagnostics)
         }
     }
 }
@@ -161,4 +162,5 @@ private struct DeviceRow: View {
         .environment(BluFiScanner.preview())
         .environment(BluFiSessionController())
         .environment(AppCoordinator())
+        .environment(BluFiDiagnosticsStore.preview())
 }
