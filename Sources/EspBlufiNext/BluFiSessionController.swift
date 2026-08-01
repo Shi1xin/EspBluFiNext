@@ -65,6 +65,7 @@ final class BluFiSessionController {
     private(set) var wifiNetworks: [BluFiWiFiScanResult] = []
     private(set) var customMessages: [BluFiConsoleMessage] = []
     private(set) var lastError: String?
+    private(set) var reconnectableDevice: BluFiDiscoveredDevice?
 
     @ObservationIgnored
     private var client: BluFiClient?
@@ -73,7 +74,11 @@ final class BluFiSessionController {
     private var currentSessionID: UUID?
 
     var isConnected: Bool {
-        client != nil && connectedDevice != nil
+        client != nil && connectedDevice != nil && deviceVersion != nil
+    }
+
+    var canReconnect: Bool {
+        reconnectableDevice != nil && !isConnected && !phase.isBusy
     }
 
     func connect(
@@ -86,8 +91,27 @@ final class BluFiSessionController {
             return
         }
 
+        scanner.onActiveDeviceDisconnected = nil
+        if let client {
+            try? await client.closeConnection()
+            scanner.disconnectActiveDevice()
+        }
+        if let currentSessionID {
+            diagnostics.finishSession(currentSessionID, outcome: .disconnected)
+        }
+        reset()
+
         let sessionID = diagnostics.beginSession(for: device)
         currentSessionID = sessionID
+        reconnectableDevice = device
+        scanner.onActiveDeviceDisconnected = { [weak self] deviceID, error in
+            self?.handleUnexpectedDisconnect(
+                deviceID: deviceID,
+                error: error,
+                scanner: scanner,
+                diagnostics: diagnostics
+            )
+        }
         record(
             diagnostics,
             category: .connection,
@@ -108,6 +132,8 @@ final class BluFiSessionController {
                 commandTimeout: settings.commandTimeout,
                 packetLength: settings.packetLength
             )
+            self.client = client
+            connectedDevice = device
             record(
                 diagnostics,
                 category: .connection,
@@ -116,8 +142,6 @@ final class BluFiSessionController {
                 deviceID: device.id
             )
             let version = try await client.requestDeviceVersion()
-            self.client = client
-            connectedDevice = device
             deviceVersion = version
             securityVersion = nil
             phase = .ready
@@ -130,6 +154,10 @@ final class BluFiSessionController {
                 deviceID: device.id
             )
         } catch is CancellationError {
+            guard currentSessionID == sessionID else {
+                return
+            }
+            scanner.onActiveDeviceDisconnected = nil
             record(
                 diagnostics,
                 category: .connection,
@@ -142,6 +170,10 @@ final class BluFiSessionController {
             scanner.disconnectActiveDevice()
             reset()
         } catch {
+            guard currentSessionID == sessionID else {
+                return
+            }
+            scanner.onActiveDeviceDisconnected = nil
             record(
                 diagnostics,
                 category: .connection,
@@ -157,11 +189,27 @@ final class BluFiSessionController {
         }
     }
 
+    func reconnect(
+        using scanner: BluFiScanner,
+        settings: AppSettingsStore,
+        diagnostics: BluFiDiagnosticsStore
+    ) async {
+        guard let reconnectableDevice, canReconnect else {
+            return
+        }
+        await connect(
+            to: reconnectableDevice,
+            using: scanner,
+            settings: settings,
+            diagnostics: diagnostics
+        )
+    }
+
     func negotiateSecurity(
         override: BluFiSecurityOverride = .automatic,
         diagnostics: BluFiDiagnosticsStore
     ) async {
-        guard let client, let deviceVersion, !phase.isBusy else {
+        guard let client, let deviceVersion, let sessionID = currentSessionID, !phase.isBusy else {
             return
         }
 
@@ -174,10 +222,14 @@ final class BluFiSessionController {
         lastError = nil
 
         do {
-            securityVersion = try await client.negotiateSecurity(
+            let negotiatedVersion = try await client.negotiateSecurity(
                 deviceVersion: deviceVersion,
                 override: override
             )
+            guard currentSessionID == sessionID else {
+                return
+            }
+            securityVersion = negotiatedVersion
             phase = readyPhase
             record(
                 diagnostics,
@@ -186,6 +238,9 @@ final class BluFiSessionController {
                 detail: "Security V\(securityVersion?.rawValue ?? 0)"
             )
         } catch is CancellationError {
+            guard currentSessionID == sessionID else {
+                return
+            }
             record(
                 diagnostics,
                 category: .security,
@@ -194,6 +249,9 @@ final class BluFiSessionController {
             )
             phase = readyPhase
         } catch {
+            guard currentSessionID == sessionID else {
+                return
+            }
             record(
                 diagnostics,
                 category: .security,
@@ -207,7 +265,7 @@ final class BluFiSessionController {
     }
 
     func refreshWiFiStatus(diagnostics: BluFiDiagnosticsStore) async {
-        guard let client, !phase.isBusy else {
+        guard let client, let sessionID = currentSessionID, !phase.isBusy else {
             return
         }
 
@@ -216,7 +274,11 @@ final class BluFiSessionController {
         lastError = nil
 
         do {
-            wifiStatus = try await client.requestDeviceStatus()
+            let status = try await client.requestDeviceStatus()
+            guard currentSessionID == sessionID else {
+                return
+            }
+            wifiStatus = status
             phase = readyPhase
             if let wifiStatus {
                 record(
@@ -227,6 +289,9 @@ final class BluFiSessionController {
                 )
             }
         } catch is CancellationError {
+            guard currentSessionID == sessionID else {
+                return
+            }
             record(
                 diagnostics,
                 category: .command,
@@ -235,6 +300,9 @@ final class BluFiSessionController {
             )
             phase = readyPhase
         } catch {
+            guard currentSessionID == sessionID else {
+                return
+            }
             record(
                 diagnostics,
                 category: .command,
@@ -248,7 +316,7 @@ final class BluFiSessionController {
     }
 
     func scanDeviceWiFi(diagnostics: BluFiDiagnosticsStore) async {
-        guard let client, !phase.isBusy else {
+        guard let client, let sessionID = currentSessionID, !phase.isBusy else {
             return
         }
 
@@ -257,7 +325,11 @@ final class BluFiSessionController {
         lastError = nil
 
         do {
-            wifiNetworks = try await client.requestDeviceWiFiScan()
+            let networks = try await client.requestDeviceWiFiScan()
+            guard currentSessionID == sessionID else {
+                return
+            }
+            wifiNetworks = networks
             phase = readyPhase
             record(
                 diagnostics,
@@ -266,6 +338,9 @@ final class BluFiSessionController {
                 detail: "\(wifiNetworks.count) network(s)"
             )
         } catch is CancellationError {
+            guard currentSessionID == sessionID else {
+                return
+            }
             record(
                 diagnostics,
                 category: .command,
@@ -274,6 +349,9 @@ final class BluFiSessionController {
             )
             phase = readyPhase
         } catch {
+            guard currentSessionID == sessionID else {
+                return
+            }
             record(
                 diagnostics,
                 category: .command,
@@ -292,9 +370,10 @@ final class BluFiSessionController {
         password: String,
         diagnostics: BluFiDiagnosticsStore
     ) async -> Bool {
-        guard let client, !phase.isBusy else {
+        guard let client, let sessionID = currentSessionID, !phase.isBusy else {
             return false
         }
+        let deviceID = connectedDevice?.id
 
         record(
             diagnostics,
@@ -313,10 +392,21 @@ final class BluFiSessionController {
                     password: BluFiSensitiveValue(utf8: password)
                 )
             )
-            wifiStatus = try await client.configure(
+            let status = try await client.configure(
                 configuration,
                 waitForStationStatus: true
             )
+            guard currentSessionID == sessionID else {
+                diagnostics.record(
+                    category: .provisioning,
+                    title: "Station configuration accepted",
+                    detail: "No station status report before the device closed BluFi",
+                    sessionID: sessionID,
+                    deviceID: deviceID
+                )
+                return true
+            }
+            wifiStatus = status
             phase = wifiStatus == nil ? .stationConfigurationSent : readyPhase
             record(
                 diagnostics,
@@ -326,6 +416,9 @@ final class BluFiSessionController {
             )
             return true
         } catch is CancellationError {
+            guard currentSessionID == sessionID else {
+                return false
+            }
             record(
                 diagnostics,
                 category: .provisioning,
@@ -335,6 +428,9 @@ final class BluFiSessionController {
             phase = readyPhase
             return false
         } catch {
+            guard currentSessionID == sessionID else {
+                return false
+            }
             record(
                 diagnostics,
                 category: .provisioning,
@@ -354,7 +450,7 @@ final class BluFiSessionController {
         format: BluFiPayloadFormat,
         diagnostics: BluFiDiagnosticsStore
     ) async -> Bool {
-        guard let client, !phase.isBusy else {
+        guard let client, let sessionID = currentSessionID, !phase.isBusy else {
             return false
         }
 
@@ -369,6 +465,9 @@ final class BluFiSessionController {
 
         do {
             try await client.postCustomData(data)
+            guard currentSessionID == sessionID else {
+                return false
+            }
             customMessages.insert(
                 BluFiConsoleMessage(direction: .sent, format: format, bytes: data),
                 at: 0
@@ -382,6 +481,9 @@ final class BluFiSessionController {
             )
             return true
         } catch is CancellationError {
+            guard currentSessionID == sessionID else {
+                return false
+            }
             record(
                 diagnostics,
                 category: .command,
@@ -391,6 +493,9 @@ final class BluFiSessionController {
             phase = readyPhase
             return false
         } catch {
+            guard currentSessionID == sessionID else {
+                return false
+            }
             record(
                 diagnostics,
                 category: .command,
@@ -409,7 +514,7 @@ final class BluFiSessionController {
         format: BluFiPayloadFormat,
         diagnostics: BluFiDiagnosticsStore
     ) async -> Bool {
-        guard let client, !phase.isBusy else {
+        guard let client, let sessionID = currentSessionID, !phase.isBusy else {
             return false
         }
 
@@ -424,6 +529,9 @@ final class BluFiSessionController {
 
         do {
             let data = try await client.receiveCustomData()
+            guard currentSessionID == sessionID else {
+                return false
+            }
             customMessages.insert(
                 BluFiConsoleMessage(direction: .received, format: format, bytes: data),
                 at: 0
@@ -437,6 +545,9 @@ final class BluFiSessionController {
             )
             return true
         } catch is CancellationError {
+            guard currentSessionID == sessionID else {
+                return false
+            }
             record(
                 diagnostics,
                 category: .command,
@@ -446,6 +557,9 @@ final class BluFiSessionController {
             phase = readyPhase
             return false
         } catch {
+            guard currentSessionID == sessionID else {
+                return false
+            }
             record(
                 diagnostics,
                 category: .command,
@@ -464,6 +578,7 @@ final class BluFiSessionController {
     }
 
     func disconnect(using scanner: BluFiScanner, diagnostics: BluFiDiagnosticsStore) async {
+        scanner.onActiveDeviceDisconnected = nil
         record(diagnostics, category: .connection, title: "Disconnect requested")
         if let client {
             try? await client.closeConnection()
@@ -472,6 +587,30 @@ final class BluFiSessionController {
             diagnostics.finishSession(currentSessionID, outcome: .disconnected)
         }
         scanner.disconnectActiveDevice()
+        reset()
+    }
+
+    private func handleUnexpectedDisconnect(
+        deviceID: UUID,
+        error: (any Error)?,
+        scanner: BluFiScanner,
+        diagnostics: BluFiDiagnosticsStore
+    ) {
+        guard connectedDevice?.id == deviceID else {
+            return
+        }
+
+        scanner.onActiveDeviceDisconnected = nil
+        record(
+            diagnostics,
+            category: .bluetooth,
+            severity: .warning,
+            title: "Bluetooth device disconnected",
+            detail: error?.localizedDescription
+        )
+        if let currentSessionID {
+            diagnostics.finishSession(currentSessionID, outcome: .disconnected)
+        }
         reset()
     }
 

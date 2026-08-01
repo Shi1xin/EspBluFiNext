@@ -22,6 +22,7 @@
 "Discovering the BluFi service and requesting the device version." = "正在发现 BluFi 服务并请求设备版本。";
 "Connect to a device to inspect BluFi status and send commands." = "连接设备后可以查看 BluFi 状态并发送命令。";
 "Disconnect" = "断开连接";
+"Reconnect" = "重新连接";
 "Device" = "设备";
 "Commands" = "命令";
 "Establish Secure Session" = "建立安全会话";
@@ -154,6 +155,8 @@
 "Custom data receive cancelled" = "自定义数据接收已取消";
 "Custom data receive failed" = "自定义数据接收失败";
 "Disconnect requested" = "已请求断开连接";
+"Bluetooth device disconnected" = "蓝牙设备已断开";
+"Delete" = "删除";
 "Connection" = "连接";
 "Protocol" = "协议";
 "Security" = "安全";

@@ -225,6 +225,15 @@ final class BluFiDiagnosticsStore {
         persist()
     }
 
+    /// Removes one session and the events that belong to it. The session list
+    /// remains bounded, while users can also remove an obsolete record directly
+    /// from the Logs screen.
+    func removeSession(_ sessionID: UUID) {
+        sessions.removeAll { $0.id == sessionID }
+        events.removeAll { $0.sessionID == sessionID }
+        persist()
+    }
+
     func clear() {
         events.removeAll()
         sessions.removeAll()
@@ -265,6 +274,19 @@ final class BluFiDiagnosticsStore {
         if let data = defaults.data(forKey: Self.sessionsKey),
            let storedSessions = try? decoder.decode([BluFiSessionRecord].self, from: data) {
             sessions = Array(storedSessions.prefix(sessionLimit))
+        }
+
+        // A live BluFi controller cannot survive an app relaunch. Any session
+        // that was persisted as active therefore ended with the previous app
+        // process and must not remain indefinitely in the Active state.
+        var didReconcileActiveSessions = false
+        for index in sessions.indices where sessions[index].outcome == .active {
+            sessions[index].outcome = .disconnected
+            sessions[index].endedAt = .now
+            didReconcileActiveSessions = true
+        }
+        if didReconcileActiveSessions {
+            persist()
         }
     }
 

@@ -5,22 +5,20 @@ import UIKit
 struct SessionDashboardHeader: View {
     @Environment(BluFiSessionController.self) private var session
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     let device: BluFiDiscoveredDevice
 
     var body: some View {
         cardContent
-            .padding(18)
+            .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background {
-                if #available(iOS 26, *), !reduceTransparency {
-                    Color.clear
-                        .glassEffect(.regular, in: .rect(cornerRadius: 22))
-                } else {
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(Color(uiColor: .secondarySystemBackground))
-                }
+            .background(
+                Color(uiColor: .secondarySystemGroupedBackground),
+                in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(.white.opacity(0.08), lineWidth: 1)
             }
             .transaction { transaction in
                 if reduceMotion {
@@ -32,60 +30,73 @@ struct SessionDashboardHeader: View {
 
     @ViewBuilder
     private var cardContent: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Label(session.phase.title.appLocalizedKey, systemImage: phaseSymbol)
-                    .font(.headline)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: phaseSymbol)
+                    .font(.title2.weight(.semibold))
                     .foregroundStyle(phaseColor)
+                    .frame(width: 30, alignment: .leading)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(session.phase.title.appLocalizedKey)
+                        .font(.headline)
+                        .foregroundStyle(phaseColor)
+                        .lineLimit(2)
+
+                    Text(verbatim: device.name)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .textSelection(.enabled)
+                }
 
                 Spacer(minLength: 8)
-
-                Text(device.name)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
             }
 
-            if #available(iOS 26, *) {
-                GlassEffectContainer(spacing: 10) {
-                    statusPillLayout
-                }
-            } else {
-                statusPillLayout
-            }
+            Divider()
+
+            statusMetricLayout
         }
     }
 
-    private var statusPillRow: some View {
-        HStack(spacing: 10) {
-            DashboardStatusPill(
+    private var statusMetricRow: some View {
+        HStack(spacing: 0) {
+            DashboardStatusMetric(
                 title: "BluFi",
                 value: versionTitle,
-                systemImage: "antenna.radiowaves.left.and.right"
+                valueIsLocalized: versionIsLocalized
             )
-            DashboardStatusPill(
+            metricDivider
+            DashboardStatusMetric(
                 title: "Security",
                 value: securityTitle,
-                systemImage: "lock.shield"
+                valueIsLocalized: securityIsLocalized
             )
             if let status = session.wifiStatus {
-                DashboardStatusPill(
+                metricDivider
+                DashboardStatusMetric(
                     title: "Wi-Fi",
                     value: status.hasIP ? "IP Available" : status.stationState.dashboardTitle,
-                    systemImage: "wifi"
+                    valueIsLocalized: true
                 )
             }
         }
     }
 
-    private var statusPillLayout: some View {
+    private var statusMetricLayout: some View {
         ViewThatFits(in: .horizontal) {
-            statusPillRow
+            statusMetricRow
             ScrollView(.horizontal, showsIndicators: false) {
-                statusPillRow
+                statusMetricRow
             }
             .scrollBounceBehavior(.basedOnSize)
         }
+    }
+
+    private var metricDivider: some View {
+        Divider()
+            .frame(height: 34)
+            .padding(.horizontal, 12)
     }
 
     private var versionTitle: String {
@@ -95,11 +106,19 @@ struct SessionDashboardHeader: View {
         return "V\(version.major).\(version.minor)"
     }
 
+    private var versionIsLocalized: Bool {
+        session.deviceVersion == nil
+    }
+
     private var securityTitle: String {
         guard let securityVersion = session.securityVersion else {
             return "Not negotiated"
         }
         return "V\(securityVersion.rawValue)"
+    }
+
+    private var securityIsLocalized: Bool {
+        session.securityVersion == nil
     }
 
     private var phaseSymbol: String {
@@ -131,39 +150,31 @@ struct SessionDashboardHeader: View {
     }
 }
 
-private struct DashboardStatusPill: View {
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-
+private struct DashboardStatusMetric: View {
     let title: String
     let value: String
-    let systemImage: String
+    let valueIsLocalized: Bool
 
     var body: some View {
-        Label {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title.appLocalizedKey)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                Text(value.appLocalizedKey)
-                    .font(.caption.weight(.semibold))
-                    .lineLimit(1)
-            }
-        } icon: {
-            Image(systemName: systemImage)
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title.appLocalizedKey)
                 .font(.caption)
-                .foregroundStyle(.tint)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background {
-            if #available(iOS 26, *), !reduceTransparency {
-                Color.clear
-                    .glassEffect(.regular, in: .capsule)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+
+            if valueIsLocalized {
+                Text(value.appLocalizedKey)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             } else {
-                Capsule()
-                    .fill(Color(uiColor: .tertiarySystemBackground))
+                Text(verbatim: value)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

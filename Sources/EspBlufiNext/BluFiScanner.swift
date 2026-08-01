@@ -52,6 +52,10 @@ final class BluFiScanner: NSObject, @preconcurrency CBCentralManagerDelegate {
     private(set) var isScanning = false
     var namePrefix = ""
 
+    /// Called after an established active transport is closed by CoreBluetooth.
+    /// Explicit user disconnects clear this handler before closing the transport.
+    var onActiveDeviceDisconnected: (@MainActor (UUID, (any Error)?) -> Void)?
+
     @ObservationIgnored
     private var central: CBCentralManager?
 
@@ -173,8 +177,10 @@ final class BluFiScanner: NSObject, @preconcurrency CBCentralManagerDelegate {
         guard activeTransport?.matches(peripheral) == true else {
             return
         }
+        let deviceID = peripheral.identifier
         activeTransport?.disconnected(error)
         activeTransport = nil
+        onActiveDeviceDisconnected?(deviceID, error)
     }
 
     func centralManager(

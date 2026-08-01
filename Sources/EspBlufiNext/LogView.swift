@@ -29,6 +29,11 @@ struct LogView: View {
                     Section("Session History") {
                         ForEach(diagnostics.sessions) { session in
                             SessionHistoryRow(session: session)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button("Delete", systemImage: "trash", role: .destructive) {
+                                        diagnostics.removeSession(session.id)
+                                    }
+                                }
                         }
                     }
                 }

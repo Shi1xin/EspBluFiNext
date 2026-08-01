@@ -22,6 +22,7 @@
 "Discovering the BluFi service and requesting the device version." = "Discovering the BluFi service and requesting the device version.";
 "Connect to a device to inspect BluFi status and send commands." = "Connect to a device to inspect BluFi status and send commands.";
 "Disconnect" = "Disconnect";
+"Reconnect" = "Reconnect";
 "Device" = "Device";
 "Commands" = "Commands";
 "Establish Secure Session" = "Establish Secure Session";
@@ -154,6 +155,8 @@
 "Custom data receive cancelled" = "Custom data receive cancelled";
 "Custom data receive failed" = "Custom data receive failed";
 "Disconnect requested" = "Disconnect requested";
+"Bluetooth device disconnected" = "Bluetooth device disconnected";
+"Delete" = "Delete";
 "Connection" = "Connection";
 "Protocol" = "Protocol";
 "Security" = "Security";

@@ -5,6 +5,7 @@ struct SessionView: View {
     @Environment(BluFiScanner.self) private var scanner
     @Environment(BluFiSessionController.self) private var session
     @Environment(BluFiDiagnosticsStore.self) private var diagnostics
+    @Environment(AppSettingsStore.self) private var settings
 
     var body: some View {
         NavigationStack {
@@ -18,16 +19,20 @@ struct SessionView: View {
                         description: Text("Discovering the BluFi service and requesting the device version.")
                     )
                 } else if let lastError = session.lastError {
-                    ContentUnavailableView(
-                        "Connection Failed",
+                    SessionUnavailableView(
+                        title: "Connection Failed",
                         systemImage: "exclamationmark.triangle",
-                        description: Text(lastError)
+                        message: lastError,
+                        canReconnect: session.canReconnect,
+                        reconnect: reconnect
                     )
                 } else {
-                    ContentUnavailableView(
-                        "No Active Session",
+                    SessionUnavailableView(
+                        title: "No Active Session",
                         systemImage: "antenna.radiowaves.left.and.right.slash",
-                        description: Text("Connect to a device to inspect BluFi status and send commands.")
+                        message: "Connect to a device to inspect BluFi status and send commands.",
+                        canReconnect: session.canReconnect,
+                        reconnect: reconnect
                     )
                 }
             }
@@ -38,6 +43,11 @@ struct SessionView: View {
                         Button("Disconnect", systemImage: "xmark.circle", action: disconnect)
                             .disabled(session.phase.isBusy)
                     }
+                } else if session.canReconnect {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Reconnect", systemImage: "arrow.clockwise", action: reconnect)
+                            .accessibilityLabel("Reconnect")
+                    }
                 }
             }
         }
@@ -46,6 +56,33 @@ struct SessionView: View {
     private func disconnect() {
         Task {
             await session.disconnect(using: scanner, diagnostics: diagnostics)
+        }
+    }
+
+    private func reconnect() {
+        Task {
+            await session.reconnect(using: scanner, settings: settings, diagnostics: diagnostics)
+        }
+    }
+}
+
+private struct SessionUnavailableView: View {
+    let title: String
+    let systemImage: String
+    let message: String
+    let canReconnect: Bool
+    let reconnect: () -> Void
+
+    var body: some View {
+        ContentUnavailableView {
+            Label(title.appLocalizedKey, systemImage: systemImage)
+        } description: {
+            Text(message.appLocalizedKey)
+        } actions: {
+            if canReconnect {
+                Button("Reconnect", systemImage: "arrow.clockwise", action: reconnect)
+                    .buttonStyle(.borderedProminent)
+            }
         }
     }
 }

@@ -65,6 +65,49 @@ final class EspBlufiNextTests: XCTestCase {
         XCTAssertEqual(reloaded.sessions.first?.eventCount, 1)
     }
 
+    func testDiagnosticsReconcilesPersistedActiveSessionsAfterReload() {
+        let suiteName = "EspBluFiNext.active-session-tests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        let device = BluFiDiscoveredDevice(
+            id: UUID(uuidString: "98A316CD-05AC-4F00-8000-000000000001")!,
+            name: "xiaozhi",
+            rssi: -48,
+            isConnectable: true
+        )
+
+        let store = BluFiDiagnosticsStore(defaults: defaults)
+        let sessionID = store.beginSession(for: device)
+
+        let reloaded = BluFiDiagnosticsStore(defaults: defaults)
+        let session = try! XCTUnwrap(reloaded.sessions.first(where: { $0.id == sessionID }))
+        XCTAssertEqual(session.outcome, .disconnected)
+        XCTAssertNotNil(session.endedAt)
+    }
+
+    func testDiagnosticsRemoveSessionAlsoRemovesItsEvents() {
+        let suiteName = "EspBluFiNext.remove-session-tests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        let device = BluFiDiscoveredDevice(
+            id: UUID(uuidString: "98A316CD-05AC-4F00-0000-000000000001")!,
+            name: "xiaozhi",
+            rssi: -48,
+            isConnectable: true
+        )
+        let store = BluFiDiagnosticsStore(defaults: defaults)
+        let sessionID = store.beginSession(for: device)
+        store.record(
+            category: .connection,
+            title: "Connection requested",
+            sessionID: sessionID,
+            deviceID: device.id
+        )
+
+        store.removeSession(sessionID)
+
+        XCTAssertTrue(store.sessions.isEmpty)
+        XCTAssertTrue(store.events.isEmpty)
+    }
+
     func testDiagnosticExportContainsRedactionPolicyAndOmitsCredentials() throws {
         let suiteName = "EspBluFiNext.export-tests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
