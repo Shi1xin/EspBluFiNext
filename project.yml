@@ -21,6 +21,10 @@ targets:
     platform: iOS
     sources:
       - path: Sources/EspBlufiNext
+      - path: Design/AppIcon
+        includes:
+          - EspBlufiNext.icon
+        buildPhase: resources
     resources:
       - path: Sources/EspBlufiNext/Resources
     info:
@@ -44,6 +48,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.espblufi.next
+        ASSETCATALOG_COMPILER_APPICON_NAME: EspBlufiNext
         CODE_SIGN_ENTITLEMENTS: Sources/EspBlufiNext/EspBlufiNext.entitlements
         SWIFT_VERSION: "6.0"
         TARGETED_DEVICE_FAMILY: "1,2"
