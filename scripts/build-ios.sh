@@ -5,7 +5,6 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode-beta.app/Contents/Developer}"
 DESTINATION="${DESTINATION:-generic/platform=iOS Simulator}"
 DERIVED_DATA_PATH="${DERIVED_DATA_PATH:-build/derived}"
 

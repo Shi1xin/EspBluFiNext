@@ -5,8 +5,6 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode-beta.app/Contents/Developer}"
-
 CONFIGURATION="${CONFIGURATION:-Release}"
 DESTINATION="${DESTINATION:-generic/platform=iOS}"
 ARCHIVE_PATH="${ARCHIVE_PATH:-build/archive/EspBlufiNext.xcarchive}"

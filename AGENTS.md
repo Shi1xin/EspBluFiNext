@@ -39,10 +39,10 @@ Keep command orchestration in `BluFiSessionController` and transport details in 
 
 ## Toolchain and one-time setup
 
-Use the full Xcode beta toolchain for iOS 26:
+Use Xcode 26 or later with the iOS 26 SDK:
 
 ```bash
-sudo xcode-select --switch /Applications/Xcode-beta.app/Contents/Developer
+sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
 sudo xcodebuild -license accept
 sudo xcodebuild -runFirstLaunch
 brew install xcodegen
